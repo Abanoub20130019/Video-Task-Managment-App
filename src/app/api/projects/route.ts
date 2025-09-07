@@ -18,8 +18,9 @@ export async function GET(request: NextRequest) {
     // Validate query parameters
     const queryValidation = validateQueryParams(projectQuerySchema, searchParams);
     if (!queryValidation.success) {
+      const errors = 'errors' in queryValidation ? queryValidation.errors : ['Validation failed'];
       return NextResponse.json(
-        { error: 'Invalid query parameters', details: queryValidation.errors },
+        { error: 'Invalid query parameters', details: errors },
         { status: 400 }
       );
     }
@@ -88,13 +89,19 @@ export async function POST(request: NextRequest) {
     // Validate request data
     const validation = validateRequestData(createProjectSchema, requestData);
     if (!validation.success) {
+      const errors = 'errors' in validation ? validation.errors : ['Validation failed'];
       return NextResponse.json(
-        { error: 'Invalid project data', details: validation.errors },
+        { error: 'Invalid project data', details: errors },
         { status: 400 }
       );
     }
 
-    const { name, description, clientId, projectManagerId, budget, startDate, endDate, status } = validation.data;
+    if (!validation.success) {
+      // This should never happen since we already checked above, but TypeScript needs this
+      return NextResponse.json({ error: 'Validation failed' }, { status: 400 });
+    }
+
+    const { name, description, clientId, projectManagerId, budget, startDate, endDate, status } = validation.data as any;
 
     await dbConnect();
 

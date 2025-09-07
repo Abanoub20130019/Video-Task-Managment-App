@@ -18,13 +18,14 @@ export async function GET(request: NextRequest) {
     // Validate query parameters
     const queryValidation = validateQueryParams(userQuerySchema, searchParams);
     if (!queryValidation.success) {
+      const errors = 'errors' in queryValidation ? queryValidation.errors : ['Validation failed'];
       return NextResponse.json(
-        { error: 'Invalid query parameters', details: queryValidation.errors },
+        { error: 'Invalid query parameters', details: errors },
         { status: 400 }
       );
     }
 
-    const { page, limit, search, role } = queryValidation.data;
+    const { page, limit, search, role } = queryValidation.data as any;
     const skip = (page - 1) * limit;
 
     await dbConnect();

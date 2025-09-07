@@ -20,13 +20,14 @@ export async function GET(request: NextRequest) {
     // Validate query parameters
     const queryValidation = validateQueryParams(taskQuerySchema, searchParams);
     if (!queryValidation.success) {
+      const errors = 'errors' in queryValidation ? queryValidation.errors : ['Validation failed'];
       return NextResponse.json(
-        { error: 'Invalid query parameters', details: queryValidation.errors },
+        { error: 'Invalid query parameters', details: errors },
         { status: 400 }
       );
     }
 
-    const { page, limit, search, status, priority, projectId } = queryValidation.data;
+    const { page, limit, search, status, priority, projectId } = queryValidation.data as any;
     const skip = (page - 1) * limit;
 
     await dbConnect();
@@ -93,13 +94,14 @@ export async function POST(request: NextRequest) {
     // Validate request data
     const validation = validateRequestData(createTaskSchema, requestData);
     if (!validation.success) {
+      const errors = 'errors' in validation ? validation.errors : ['Validation failed'];
       return NextResponse.json(
-        { error: 'Invalid task data', details: validation.errors },
+        { error: 'Invalid task data', details: errors },
         { status: 400 }
       );
     }
 
-    const { projectId, title, description, assignedTo, priority, dueDate, startDate, estimatedHours } = validation.data;
+    const { projectId, title, description, assignedTo, priority, dueDate, startDate, estimatedHours } = validation.data as any;
 
     await dbConnect();
 
