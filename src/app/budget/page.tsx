@@ -57,10 +57,20 @@ export default function BudgetPage() {
         fetch('/api/budgets'),
       ]);
 
-      if (projectsRes.ok) setProjects(await projectsRes.json());
-      if (budgetsRes.ok) setBudgets(await budgetsRes.json());
+      if (projectsRes.ok) {
+        const projectsData = await projectsRes.json();
+        const projectsArray = Array.isArray(projectsData.projects) ? projectsData.projects : [];
+        setProjects(projectsArray);
+      }
+      if (budgetsRes.ok) {
+        const budgetsData = await budgetsRes.json();
+        const budgetsArray = Array.isArray(budgetsData) ? budgetsData : [];
+        setBudgets(budgetsArray);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
+      setProjects([]);
+      setBudgets([]);
     } finally {
       setLoading(false);
     }

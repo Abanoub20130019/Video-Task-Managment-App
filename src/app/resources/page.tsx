@@ -81,12 +81,32 @@ export default function ResourcesPage() {
         fetch('/api/allocations'),
       ]);
 
-      if (projectsRes.ok) setProjects(await projectsRes.json());
-      if (equipmentRes.ok) setEquipment(await equipmentRes.json());
-      if (usersRes.ok) setUsers(await usersRes.json());
-      if (allocationsRes.ok) setAllocations(await allocationsRes.json());
+      if (projectsRes.ok) {
+        const projectsData = await projectsRes.json();
+        const projectsArray = Array.isArray(projectsData.projects) ? projectsData.projects : [];
+        setProjects(projectsArray);
+      }
+      if (equipmentRes.ok) {
+        const equipmentData = await equipmentRes.json();
+        const equipmentArray = Array.isArray(equipmentData) ? equipmentData : [];
+        setEquipment(equipmentArray);
+      }
+      if (usersRes.ok) {
+        const usersData = await usersRes.json();
+        const usersArray = Array.isArray(usersData.users) ? usersData.users : [];
+        setUsers(usersArray);
+      }
+      if (allocationsRes.ok) {
+        const allocationsData = await allocationsRes.json();
+        const allocationsArray = Array.isArray(allocationsData) ? allocationsData : [];
+        setAllocations(allocationsArray);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
+      setProjects([]);
+      setEquipment([]);
+      setUsers([]);
+      setAllocations([]);
     } finally {
       setLoading(false);
     }
