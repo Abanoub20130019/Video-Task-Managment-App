@@ -158,24 +158,43 @@ REDIS_URL=redis://your-redis-instance
 ### Common Issues
 
 1. **Database Connection Errors**:
-   - Verify MongoDB Atlas network access
-   - Check connection string format
-   - Ensure database user permissions
+   ```
+   Error: querySrv ENOTFOUND _mongodb._tcp.cluster.mongodb.net
+   ```
+   **Solutions**:
+   - Verify MongoDB Atlas network access (allow 0.0.0.0/0 for Vercel)
+   - Check connection string format exactly matches:
+     ```
+     mongodb+srv://username:password@cluster0.vux2yvb.mongodb.net/database_name?retryWrites=true&w=majority&appName=Cluster0
+     ```
+   - Ensure database user permissions are correct
+   - Test connection using `/api/test-db` endpoint
+   - Check if MongoDB Atlas cluster is running and accessible
 
 2. **Environment Variables**:
-   - Verify all required variables are set in Vercel
-   - Check variable names match exactly
+   - Verify all required variables are set in Vercel dashboard
+   - Check variable names match exactly (case-sensitive)
+   - Ensure MONGODB_URI doesn't have extra spaces or characters
    - Redeploy after adding new variables
+   - Test locally first with `.env.local`
 
 3. **Service Worker Issues**:
-   - Clear browser cache
-   - Check browser console for SW errors
-   - Verify manifest.json is accessible
+   - Clear browser cache and service worker
+   - Check browser console for SW registration errors
+   - Verify manifest.json is accessible at `/manifest.json`
+   - Check if service worker is properly registered in DevTools
 
 4. **Authentication Issues**:
-   - Verify NEXTAUTH_URL matches deployment URL
-   - Check NEXTAUTH_SECRET is set
+   - Verify NEXTAUTH_URL matches exact deployment URL
+   - Check NEXTAUTH_SECRET is set and sufficiently long
    - Ensure session configuration is correct
+   - Test authentication flow in incognito mode
+
+5. **Firebase/Pusher Connection Issues**:
+   - Verify all Firebase config variables are set correctly
+   - Check Pusher app credentials and cluster region
+   - Ensure VAPID key is configured for push notifications
+   - Test real-time features after deployment
 
 ### Performance Issues
 
