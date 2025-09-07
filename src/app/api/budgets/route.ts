@@ -9,9 +9,10 @@ import { authOptions } from '@/lib/auth';
 // Ensure models are registered by importing them
 // This prevents the MissingSchemaError during populate operations
 const ensureModelsRegistered = () => {
-  // Force model registration by calling mongoose.model() explicitly
-  if (!mongoose.models.Budget) mongoose.model('Budget', Budget.schema);
-  if (!mongoose.models.Project) mongoose.model('Project', Project.schema);
+  // Force model registration by accessing the imported models
+  // This ensures they are loaded and registered with Mongoose
+  Budget;
+  Project;
 };
 
 export async function GET(request: NextRequest) {

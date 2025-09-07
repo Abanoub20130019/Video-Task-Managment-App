@@ -3,9 +3,20 @@ import { getServerSession } from 'next-auth';
 import dbConnect from '@/lib/mongodb';
 import Task from '@/models/Task';
 import Project from '@/models/Project';
+import User from '@/models/User';
 import { authOptions } from '@/lib/auth';
 import { apiLogger } from '@/lib/logger';
 import { CacheService, CacheKeys, CacheTTL } from '@/lib/redis';
+
+// Ensure models are registered by importing them
+// This prevents the MissingSchemaError during populate operations
+const ensureModelsRegistered = () => {
+  // Force model registration by accessing the imported models
+  // This ensures they are loaded and registered with Mongoose
+  Task;
+  Project;
+  User;
+};
 
 interface TaskPriorityData {
   _id: string;
@@ -201,6 +212,9 @@ export async function POST(request: NextRequest) {
     });
 
     await dbConnect();
+    
+    // Ensure all models are registered before populate operations
+    ensureModelsRegistered();
 
     // Build query based on input
     let query: any = {};

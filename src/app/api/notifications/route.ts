@@ -2,7 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import dbConnect from '@/lib/mongodb';
 import Task from '@/models/Task';
+import Project from '@/models/Project';
 import { authOptions } from '@/lib/auth';
+
+// Ensure models are registered by importing them
+// This prevents the MissingSchemaError during populate operations
+const ensureModelsRegistered = () => {
+  // Force model registration by accessing the imported models
+  // This ensures they are loaded and registered with Mongoose
+  Task;
+  Project;
+};
 
 export async function GET(_request: NextRequest) {
   try {
@@ -13,6 +23,9 @@ export async function GET(_request: NextRequest) {
     }
 
     await dbConnect();
+    
+    // Ensure all models are registered before populate operations
+    ensureModelsRegistered();
 
     // Get tasks assigned to the user that are due soon or overdue
     const now = new Date();

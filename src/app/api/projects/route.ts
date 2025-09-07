@@ -11,10 +11,11 @@ import { projectQuerySchema, createProjectSchema, validateRequestData, validateQ
 // Ensure models are registered by importing them
 // This prevents the MissingSchemaError during populate operations
 const ensureModelsRegistered = () => {
-  // Force model registration by calling mongoose.model() explicitly
-  if (!mongoose.models.Project) mongoose.model('Project', Project.schema);
-  if (!mongoose.models.Client) mongoose.model('Client', Client.schema);
-  if (!mongoose.models.User) mongoose.model('User', User.schema);
+  // Force model registration by accessing the imported models
+  // This ensures they are loaded and registered with Mongoose
+  Project;
+  Client;
+  User;
 };
 
 export async function GET(request: NextRequest) {
