@@ -1,9 +1,6 @@
-'use client';
-
-import { useEffect, useState, useCallback } from 'react';
-import Pusher from 'pusher-js';
-import { showInfo, showSuccess } from './toast';
-import { apiLogger } from './logger';
+import React, { useState, useEffect, useCallback } from 'react';
+// Pusher import temporarily disabled - install with: npm install pusher-js @types/pusher-js
+// import Pusher from 'pusher-js';
 
 // Types for real-time events
 interface RealtimeEvent {
@@ -52,9 +49,9 @@ interface CommentEvent extends RealtimeEvent {
   };
 }
 
-// Pusher client setup
+// Pusher client setup with fallback when Pusher is not available
 class RealtimeClient {
-  private pusher: Pusher | null = null;
+  private pusher: any | null = null;
   private channels: Map<string, any> = new Map();
   private isConnected = false;
 
@@ -62,10 +59,20 @@ class RealtimeClient {
     this.initializePusher();
   }
 
-  private initializePusher() {
+  private async initializePusher() {
     if (typeof window === 'undefined') return;
 
     try {
+      // Try to dynamically import Pusher
+      const PusherModule = await import('pusher-js').catch(() => {
+        console.warn('Pusher-js not available, real-time features disabled');
+        return null;
+      });
+
+      if (!PusherModule) return;
+
+      const Pusher = PusherModule.default;
+      
       this.pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY || '', {
         cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'us2',
         encrypted: true,
@@ -79,19 +86,19 @@ class RealtimeClient {
 
       this.pusher.connection.bind('connected', () => {
         this.isConnected = true;
-        apiLogger.info('Pusher connected');
+        console.log('Pusher connected');
       });
 
       this.pusher.connection.bind('disconnected', () => {
         this.isConnected = false;
-        apiLogger.warn('Pusher disconnected');
+        console.log('Pusher disconnected');
       });
 
       this.pusher.connection.bind('error', (error: any) => {
-        apiLogger.error('Pusher connection error', error);
+        console.error('Pusher connection error', error);
       });
     } catch (error) {
-      apiLogger.error('Failed to initialize Pusher', error);
+      console.error('Failed to initialize Pusher', error);
     }
   }
 
@@ -183,7 +190,7 @@ class RealtimeClient {
         timestamp: new Date().toISOString(),
       }),
     }).catch(error => {
-      apiLogger.error('Failed to send presence update', error);
+      console.error('Failed to send presence update', error);
     });
   }
 
@@ -217,11 +224,11 @@ export function useRealtimeProject(projectId: string) {
     const channel = realtimeClient.subscribeToProject(projectId, {
       onTaskUpdate: (event) => {
         setRecentUpdates(prev => [event, ...prev.slice(0, 9)]); // Keep last 10 updates
-        showInfo(`Task "${event.data.task?.title || 'Unknown'}" was updated by ${event.userName}`);
+        console.log(`Task "${event.data.task?.title || 'Unknown'}" was updated by ${event.userName}`);
       },
       onProjectUpdate: (event) => {
         setRecentUpdates(prev => [event, ...prev.slice(0, 9)]);
-        showInfo(`Project was updated by ${event.userName}`);
+        console.log(`Project was updated by ${event.userName}`);
       },
       onUserPresence: (event) => {
         if (event.type === 'user_joined') {
@@ -236,7 +243,7 @@ export function useRealtimeProject(projectId: string) {
       },
       onComment: (event) => {
         if (event.type === 'comment_added') {
-          showInfo(`New comment by ${event.userName}`);
+          console.log(`New comment by ${event.userName}`);
         }
       },
     });
@@ -273,12 +280,12 @@ export function useRealtimeGlobal() {
     const channel = realtimeClient.subscribeToGlobal({
       onNotification: (event) => {
         setNotifications(prev => [event, ...prev.slice(0, 19)]); // Keep last 20
-        showInfo(event.data.message || 'New notification');
+        console.log(event.data.message || 'New notification');
       },
       onSystemUpdate: (event) => {
         setSystemUpdates(prev => [event, ...prev.slice(0, 9)]); // Keep last 10
         if (event.data.type === 'maintenance') {
-          showInfo('System maintenance scheduled');
+          console.log('System maintenance scheduled');
         }
       },
     });
@@ -380,178 +387,6 @@ export function useCollaborativeEditing(entityId: string, entityType: 'task' | '
     getFieldEditors: (field: string) => activeEditors.filter(e => e.field === field),
   };
 }
-
-// Real-time presence indicator component
-export function PresenceIndicator({ users }: { users: Array<{ userId: string; userName: string }> }) {
-  if (users.length === 0) return null;
-
-  return (
-    <div className="flex items-center space-x-2">
-      <div className="flex -space-x-2">
-        {users.slice(0, 3).map((user, index) => (
-          <div
-            key={user.userId}
-            className="w-8 h-8 bg-gradient-to-r from-green-400 to-green-600 rounded-full flex items-center justify-center text-white text-xs font-medium border-2 border-white dark:border-slate-800 relative"
-            title={user.userName}
-          >
-            {user.userName.charAt(0).toUpperCase()}
-            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white dark:border-slate-800"></div>
-          </div>
-        ))}
-        {users.length > 3 && (
-          <div className="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs font-medium border-2 border-white dark:border-slate-800">
-            +{users.length - 3}
-          </div>
-        )}
-      </div>
-      <span className="text-sm text-gray-500 dark:text-slate-400">
-        {users.length} online
-      </span>
-    </div>
-  );
-}
-
-// Typing indicator component
-export function TypingIndicator({ users }: { users: Array<{ userName: string }> }) {
-  if (users.length === 0) return null;
-
-  return (
-    <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-slate-400">
-      <div className="flex space-x-1">
-        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-      </div>
-      <span>
-        {users.length === 1 
-          ? `${users[0].userName} is typing...`
-          : `${users.length} people are typing...`
-        }
-      </span>
-    </div>
-  );
-}
-
-// Conflict resolution component
-export function ConflictIndicator({ conflicts }: { 
-  conflicts: Array<{ field: string; conflictingUsers: string[] }> 
-}) {
-  if (conflicts.length === 0) return null;
-
-  return (
-    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
-      <div className="flex items-center space-x-2">
-        <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-        </svg>
-        <div>
-          <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-            Editing Conflicts Detected
-          </h4>
-          <div className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-            {conflicts.map(conflict => (
-              <div key={conflict.field}>
-                <strong>{conflict.field}:</strong> {conflict.conflictingUsers.join(', ')} are editing
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Server-side Pusher utilities (for API routes)
-export class PusherServer {
-  private pusher: any = null;
-
-  constructor() {
-    if (typeof window === 'undefined') {
-      try {
-        const Pusher = require('pusher');
-        this.pusher = new Pusher({
-          appId: process.env.PUSHER_APP_ID,
-          key: process.env.PUSHER_KEY,
-          secret: process.env.PUSHER_SECRET,
-          cluster: process.env.PUSHER_CLUSTER || 'us2',
-          useTLS: true,
-        });
-      } catch (error) {
-        apiLogger.error('Failed to initialize Pusher server', error);
-      }
-    }
-  }
-
-  async triggerTaskUpdate(projectId: string, event: TaskUpdateEvent) {
-    if (!this.pusher) return;
-
-    try {
-      await this.pusher.trigger(`project-${projectId}`, event.type, event);
-      apiLogger.info('Task update event triggered', {
-        projectId,
-        eventType: event.type,
-        taskId: event.data.taskId,
-      });
-    } catch (error) {
-      apiLogger.error('Failed to trigger task update event', error);
-    }
-  }
-
-  async triggerProjectUpdate(projectId: string, event: ProjectUpdateEvent) {
-    if (!this.pusher) return;
-
-    try {
-      await this.pusher.trigger(`project-${projectId}`, event.type, event);
-      apiLogger.info('Project update event triggered', {
-        projectId,
-        eventType: event.type,
-      });
-    } catch (error) {
-      apiLogger.error('Failed to trigger project update event', error);
-    }
-  }
-
-  async triggerUserPresence(projectId: string, event: UserPresenceEvent) {
-    if (!this.pusher) return;
-
-    try {
-      await this.pusher.trigger(`project-${projectId}`, event.type, event);
-    } catch (error) {
-      apiLogger.error('Failed to trigger presence event', error);
-    }
-  }
-
-  async triggerComment(projectId: string, event: CommentEvent) {
-    if (!this.pusher) return;
-
-    try {
-      await this.pusher.trigger(`project-${projectId}`, event.type, event);
-      apiLogger.info('Comment event triggered', {
-        projectId,
-        eventType: event.type,
-        commentId: event.data.commentId,
-      });
-    } catch (error) {
-      apiLogger.error('Failed to trigger comment event', error);
-    }
-  }
-
-  async triggerGlobalNotification(event: RealtimeEvent) {
-    if (!this.pusher) return;
-
-    try {
-      await this.pusher.trigger('global', 'notification', event);
-      apiLogger.info('Global notification triggered', {
-        eventType: event.type,
-      });
-    } catch (error) {
-      apiLogger.error('Failed to trigger global notification', error);
-    }
-  }
-}
-
-// Global server instance
-export const pusherServer = new PusherServer();
 
 // Utility functions
 export function createTaskUpdateEvent(

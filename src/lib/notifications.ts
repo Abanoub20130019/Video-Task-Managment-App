@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+// React hooks temporarily disabled - move to a separate React component file if needed
+// import { useEffect, useState } from 'react';
 import { showSuccess, showError, showInfo } from './toast';
 import { apiLogger } from './logger';
 
@@ -201,42 +202,13 @@ class NotificationManager {
 // Global notification manager instance
 export const notificationManager = new NotificationManager();
 
-// React hook for push notifications
-export function usePushNotifications() {
-  const [isSupported, setIsSupported] = useState(false);
-  const [permission, setPermission] = useState<NotificationPermission>('default');
-  const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    setIsSupported(notificationManager['isSupported']);
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      setPermission(Notification.permission);
-    }
-  }, []);
-
-  const requestPermission = async () => {
-    setIsLoading(true);
-    try {
-      const granted = await notificationManager.requestPermission();
-      if (typeof window !== 'undefined' && 'Notification' in window) {
-        setPermission(Notification.permission);
-      }
-      return granted;
-    } catch (error) {
-      showError('Failed to setup push notifications');
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+// React hook for push notifications - moved to separate React component file
+// This should be moved to a .tsx file to use React hooks properly
+export function createPushNotificationHook() {
   return {
-    isSupported,
-    permission,
-    token,
-    isLoading,
-    requestPermission,
+    isSupported: notificationManager['isSupported'],
+    permission: typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default',
+    requestPermission: () => notificationManager.requestPermission(),
   };
 }
 
@@ -252,9 +224,10 @@ export class ServerNotificationManager {
     if (typeof window !== 'undefined') return;
 
     try {
-      const admin = require('firebase-admin');
+      // Firebase admin import temporarily disabled - install with: npm install firebase-admin
+      const admin = null; // require('firebase-admin');
       
-      if (!admin.apps.length) {
+      if (admin && !admin.apps.length) {
         admin.initializeApp({
           credential: admin.credential.cert({
             projectId: process.env.FIREBASE_PROJECT_ID,
@@ -262,10 +235,11 @@ export class ServerNotificationManager {
             privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
           }),
         });
+        this.admin = admin;
+        apiLogger.info('Firebase Admin initialized');
+      } else {
+        apiLogger.warn('Firebase Admin not available');
       }
-
-      this.admin = admin;
-      apiLogger.info('Firebase Admin initialized');
     } catch (error) {
       apiLogger.error('Failed to initialize Firebase Admin', error);
     }

@@ -36,7 +36,7 @@ export const updateTaskSchema = createTaskSchema.partial();
 // Project validation schemas
 export const projectStatusSchema = z.enum(['planning', 'active', 'on_hold', 'completed']);
 
-export const createProjectSchema = z.object({
+const baseProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required').max(200, 'Project name must be less than 200 characters'),
   description: z.string().max(2000, 'Description must be less than 2000 characters').optional(),
   clientId: z.string().min(1, 'Client ID is required'),
@@ -46,7 +46,9 @@ export const createProjectSchema = z.object({
   startDate: z.string().datetime('Invalid start date format').or(z.date()),
   endDate: z.string().datetime('Invalid end date format').or(z.date()),
   progress: z.number().min(0, 'Progress must be at least 0').max(100, 'Progress cannot exceed 100').default(0),
-}).refine((data) => {
+});
+
+export const createProjectSchema = baseProjectSchema.refine((data) => {
   const start = new Date(data.startDate);
   const end = new Date(data.endDate);
   return start < end;
@@ -55,7 +57,7 @@ export const createProjectSchema = z.object({
   path: ['endDate'],
 });
 
-export const updateProjectSchema = createProjectSchema.partial();
+export const updateProjectSchema = baseProjectSchema.partial();
 
 // Client validation schemas
 export const createClientSchema = z.object({

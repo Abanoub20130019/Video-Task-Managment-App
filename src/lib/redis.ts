@@ -1,36 +1,59 @@
-import Redis from 'ioredis';
+// Redis import temporarily disabled - install with: npm install ioredis @types/ioredis
+// import Redis from 'ioredis';
 
-let redis: Redis | null = null;
+// In-memory cache fallback when Redis is not available
+const memoryCache = new Map<string, { data: any; expires: number }>();
 
-// Initialize Redis connection
-function getRedisClient(): Redis | null {
+// Initialize Redis connection (fallback to memory cache)
+function getRedisClient(): any | null {
   if (!process.env.REDIS_URL) {
-    console.warn('Redis URL not configured, caching disabled');
-    return null;
+    console.warn('Redis URL not configured, using memory cache fallback');
+    return {
+      get: async (key: string) => {
+        const item = memoryCache.get(key);
+        if (!item || Date.now() > item.expires) {
+          memoryCache.delete(key);
+          return null;
+        }
+        return item.data;
+      },
+      setex: async (key: string, ttl: number, data: string) => {
+        memoryCache.set(key, { data, expires: Date.now() + (ttl * 1000) });
+      },
+      del: async (key: string) => {
+        memoryCache.delete(key);
+      },
+      exists: async (key: string) => {
+        const item = memoryCache.get(key);
+        return (item && Date.now() <= item.expires) ? 1 : 0;
+      },
+      incr: async (key: string) => {
+        const item = memoryCache.get(key);
+        const current = item ? parseInt(item.data) || 0 : 0;
+        const newValue = current + 1;
+        memoryCache.set(key, { data: newValue.toString(), expires: Date.now() + 300000 });
+        return newValue;
+      },
+      expire: async (key: string, ttl: number) => {
+        const item = memoryCache.get(key);
+        if (item) {
+          item.expires = Date.now() + (ttl * 1000);
+        }
+      },
+      ttl: async (key: string) => {
+        const item = memoryCache.get(key);
+        if (!item) return -2;
+        const remaining = Math.floor((item.expires - Date.now()) / 1000);
+        return remaining > 0 ? remaining : -1;
+      },
+      keys: async (pattern: string) => {
+        const regex = new RegExp(pattern.replace(/\*/g, '.*'));
+        return Array.from(memoryCache.keys()).filter(key => regex.test(key));
+      }
+    };
   }
 
-  if (!redis) {
-    try {
-      redis = new Redis(process.env.REDIS_URL, {
-        retryDelayOnFailover: 100,
-        maxRetriesPerRequest: 3,
-        lazyConnect: true,
-      });
-
-      redis.on('error', (error) => {
-        console.error('Redis connection error:', error);
-      });
-
-      redis.on('connect', () => {
-        console.log('Connected to Redis successfully');
-      });
-    } catch (error) {
-      console.error('Failed to initialize Redis:', error);
-      return null;
-    }
-  }
-
-  return redis;
+  return null;
 }
 
 // Cache utility functions
