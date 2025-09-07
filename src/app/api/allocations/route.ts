@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import mongoose from 'mongoose';
 import dbConnect from '@/lib/mongodb';
 import ResourceAllocation from '@/models/ResourceAllocation';
 import Equipment from '@/models/Equipment';
@@ -12,13 +13,13 @@ import { authOptions } from '@/lib/auth';
 // Ensure models are registered by importing them
 // This prevents the MissingSchemaError during populate operations
 const ensureModelsRegistered = () => {
-  // Force model registration by accessing the models
-  Equipment;
-  Project;
-  Schedule;
-  User;
-  Client;
-  ResourceAllocation;
+  // Force model registration by calling mongoose.model() explicitly
+  if (!mongoose.models.ResourceAllocation) mongoose.model('ResourceAllocation', ResourceAllocation.schema);
+  if (!mongoose.models.Equipment) mongoose.model('Equipment', Equipment.schema);
+  if (!mongoose.models.Project) mongoose.model('Project', Project.schema);
+  if (!mongoose.models.Schedule) mongoose.model('Schedule', Schedule.schema);
+  if (!mongoose.models.User) mongoose.model('User', User.schema);
+  if (!mongoose.models.Client) mongoose.model('Client', Client.schema);
 };
 
 export async function GET(request: NextRequest) {

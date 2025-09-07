@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import mongoose from 'mongoose';
 import dbConnect from '@/lib/mongodb';
 import Budget from '@/models/Budget';
+import Project from '@/models/Project';
 import { authOptions } from '@/lib/auth';
+
+// Ensure models are registered by importing them
+// This prevents the MissingSchemaError during populate operations
+const ensureModelsRegistered = () => {
+  // Force model registration by calling mongoose.model() explicitly
+  if (!mongoose.models.Budget) mongoose.model('Budget', Budget.schema);
+  if (!mongoose.models.Project) mongoose.model('Project', Project.schema);
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,6 +26,9 @@ export async function GET(request: NextRequest) {
     const projectId = searchParams.get('projectId');
 
     await dbConnect();
+
+    // Ensure all models are registered before populate operations
+    ensureModelsRegistered();
 
     let query = {};
     if (projectId) {
@@ -54,6 +67,9 @@ export async function POST(request: NextRequest) {
     }
 
     await dbConnect();
+
+    // Ensure all models are registered before database operations
+    ensureModelsRegistered();
 
     const budget = await Budget.create({
       projectId,

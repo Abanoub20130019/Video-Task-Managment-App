@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import mongoose from 'mongoose';
 import dbConnect from '@/lib/mongodb';
 import Schedule from '@/models/Schedule';
+import Project from '@/models/Project';
+import User from '@/models/User';
 import { authOptions } from '@/lib/auth';
+
+// Ensure models are registered by importing them
+// This prevents the MissingSchemaError during populate operations
+const ensureModelsRegistered = () => {
+  // Force model registration by calling mongoose.model() explicitly
+  if (!mongoose.models.Schedule) mongoose.model('Schedule', Schedule.schema);
+  if (!mongoose.models.Project) mongoose.model('Project', Project.schema);
+  if (!mongoose.models.User) mongoose.model('User', User.schema);
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,6 +25,9 @@ export async function GET(request: NextRequest) {
     }
 
     await dbConnect();
+
+    // Ensure all models are registered before populate operations
+    ensureModelsRegistered();
 
     const schedules = await Schedule.find()
       .populate('projectId', 'name')
@@ -46,6 +61,9 @@ export async function POST(request: NextRequest) {
     }
 
     await dbConnect();
+
+    // Ensure all models are registered before database operations
+    ensureModelsRegistered();
 
     const schedule = await Schedule.create({
       projectId,

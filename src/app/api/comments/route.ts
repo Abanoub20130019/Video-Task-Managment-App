@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import mongoose from 'mongoose';
 import dbConnect from '@/lib/mongodb';
 import Comment from '@/models/Comment';
+import User from '@/models/User';
 import { authOptions } from '@/lib/auth';
+
+// Ensure models are registered by importing them
+// This prevents the MissingSchemaError during populate operations
+const ensureModelsRegistered = () => {
+  // Force model registration by calling mongoose.model() explicitly
+  if (!mongoose.models.Comment) mongoose.model('Comment', Comment.schema);
+  if (!mongoose.models.User) mongoose.model('User', User.schema);
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,6 +34,9 @@ export async function GET(request: NextRequest) {
     }
 
     await dbConnect();
+
+    // Ensure all models are registered before populate operations
+    ensureModelsRegistered();
 
     const query = taskId ? { taskId } : { projectId };
 
@@ -59,6 +72,9 @@ export async function POST(request: NextRequest) {
     }
 
     await dbConnect();
+
+    // Ensure all models are registered before database operations
+    ensureModelsRegistered();
 
     const comment = await Comment.create({
       content,
