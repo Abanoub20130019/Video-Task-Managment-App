@@ -4,7 +4,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ThemeToggle } from '@/lib/theme';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export default function Header() {
   const { data: session, status } = useSession();
