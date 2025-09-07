@@ -8,6 +8,11 @@ if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
 }
 
+// Log connection details for debugging (without exposing credentials)
+if (process.env.NODE_ENV === 'development') {
+  console.log('MongoDB URI configured:', MONGODB_URI.replace(/:([^:@]+)@/, ':***@'));
+}
+
 /**
  * Global is used here to maintain a cached connection across hot reloads
  * in development. This prevents connections growing exponentially
@@ -34,8 +39,19 @@ async function dbConnect() {
     };
 
     cached.promise = mongoose.connect(MONGODB_URI as string, opts).then((mongoose) => {
-      dbLogger.info('Connected to MongoDB Atlas successfully');
+      dbLogger.info('Connected to MongoDB Atlas successfully', {
+        host: mongoose.connection.host,
+        database: mongoose.connection.name,
+        readyState: mongoose.connection.readyState
+      });
       return mongoose;
+    }).catch((error) => {
+      dbLogger.error('MongoDB connection failed', {
+        error: error.message,
+        code: error.code,
+        mongoUri: MONGODB_URI.replace(/:([^:@]+)@/, ':***@')
+      });
+      throw error;
     });
   }
 
