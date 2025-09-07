@@ -46,7 +46,7 @@ export default function SignUp() {
       } else {
         setError(data.error || 'An error occurred');
       }
-    } catch (error) {
+    } catch (_error) {
       setError('An error occurred');
     } finally {
       setLoading(false);

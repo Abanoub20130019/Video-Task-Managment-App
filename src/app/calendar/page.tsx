@@ -109,7 +109,7 @@ export default function Calendar() {
     }
   };
 
-  const events = schedules.map(schedule => ({
+  const _events = schedules.map(schedule => ({
     id: schedule._id,
     title: `${schedule.title} - ${schedule.projectId.name}`,
     start: schedule.startDate,

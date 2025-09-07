@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 
 interface FileUploadProps {
-  projectId?: string;
-  taskId?: string;
+  ___projectId?: string;
+  ___taskId?: string;
   onUpload?: (file: File) => void;
 }
 

@@ -32,7 +32,7 @@ interface Task {
 
 export default function ClientPortal() {
   const params = useParams();
-  const router = useRouter();
+  const _router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);

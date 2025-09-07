@@ -7,7 +7,18 @@ import Equipment from '@/models/Equipment';
 import Schedule from '@/models/Schedule';
 import ResourceAllocation from '@/models/ResourceAllocation';
 import Budget from '@/models/Budget';
-import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+
+// Helper function for password hashing
+const hashPassword = async (password: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const salt = crypto.randomBytes(16);
+    crypto.scrypt(password, salt, 64, { N: 1024 }, (err, derivedKey) => {
+      if (err) reject(err);
+      resolve(salt.toString('hex') + ':' + derivedKey.toString('hex'));
+    });
+  });
+};
 
 export async function seedDatabase() {
   try {
@@ -24,7 +35,7 @@ export async function seedDatabase() {
     await Budget.deleteMany({});
 
     // Create users
-    const hashedPassword = await bcrypt.hash('password123', 12);
+    const hashedPassword = await hashPassword('password123');
 
     const users = await User.insertMany([
       {

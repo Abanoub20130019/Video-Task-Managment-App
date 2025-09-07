@@ -6,7 +6,7 @@ import { authOptions } from '@/lib/auth';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -17,7 +17,8 @@ export async function GET(
 
     await dbConnect();
 
-    const client = await Client.findById(params.id);
+    const { id } = await params;
+    const client = await Client.findById(id);
 
     if (!client) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
@@ -35,7 +36,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -55,8 +56,9 @@ export async function PUT(
 
     await dbConnect();
 
+    const { id } = await params;
     const client = await Client.findByIdAndUpdate(
-      params.id,
+      id,
       { name, email, phone, company, address },
       { new: true }
     );
@@ -77,7 +79,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -88,7 +90,8 @@ export async function DELETE(
 
     await dbConnect();
 
-    const client = await Client.findByIdAndDelete(params.id);
+    const { id } = await params;
+    const client = await Client.findByIdAndDelete(id);
 
     if (!client) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });

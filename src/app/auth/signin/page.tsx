@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn, getSession } from 'next-auth/react';
+import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -29,7 +29,7 @@ export default function SignIn() {
       } else {
         router.push('/dashboard');
       }
-    } catch (error) {
+    } catch (_error) {
       setError('An error occurred');
     } finally {
       setLoading(false);

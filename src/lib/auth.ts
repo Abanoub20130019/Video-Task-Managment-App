@@ -1,8 +1,21 @@
 import { NextAuthOptions, DefaultSession } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import dbConnect from './mongodb';
 import User from '@/models/User';
+
+// Helper function for password comparison
+const comparePassword = async (password: string, hash: string): Promise<boolean> => {
+  return new Promise((resolve, reject) => {
+    const [saltHex, keyHex] = hash.split(':');
+    const salt = Buffer.from(saltHex, 'hex');
+    const key = Buffer.from(keyHex, 'hex');
+    crypto.scrypt(password, salt, 64, { N: 1024 }, (err, derivedKey) => {
+      if (err) reject(err);
+      resolve(crypto.timingSafeEqual(key, derivedKey));
+    });
+  });
+};
 
 declare module 'next-auth' {
   interface User {
@@ -44,7 +57,7 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
 
-          const isPasswordValid = await bcrypt.compare(
+          const isPasswordValid = await comparePassword(
             credentials.password,
             user.password
           );

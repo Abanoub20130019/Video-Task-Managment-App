@@ -41,7 +41,7 @@ export default function ExtendedSeedPage() {
       } else {
         setResult({ success: false, message: data.error || 'Failed to run extended seed' });
       }
-    } catch (error) {
+    } catch (_error) {
       setResult({ success: false, message: 'Network error occurred' });
     } finally {
       setLoading(false);

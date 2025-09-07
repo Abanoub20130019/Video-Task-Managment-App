@@ -29,7 +29,7 @@ export function isValidName(name: string): boolean {
 }
 
 // Project validation
-export function validateProjectData(data: any) {
+export function validateProjectData(data: ValidationData) {
   const errors: string[] = [];
 
   if (!data.name || typeof data.name !== 'string' || data.name.trim().length < 3) {
@@ -64,7 +64,7 @@ export function validateProjectData(data: any) {
 }
 
 // Task validation
-export function validateTaskData(data: any) {
+export function validateTaskData(data: ValidationData) {
   const errors: string[] = [];
 
   if (!data.title || typeof data.title !== 'string' || data.title.trim().length < 3) {
@@ -87,7 +87,7 @@ export function validateTaskData(data: any) {
 }
 
 // User validation
-export function validateUserData(data: any) {
+export function validateUserData(data: ValidationData) {
   const errors: string[] = [];
 
   if (!data.name || !isValidName(data.name)) {
@@ -117,7 +117,7 @@ export function createErrorResponse(errors: string[], status: number = 400) {
 }
 
 // Success response helper
-export function createSuccessResponse(data: any, message?: string) {
+export function createSuccessResponse(data: ValidationData, message?: string) {
   return NextResponse.json(
     {
       success: true,

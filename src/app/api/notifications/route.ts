@@ -4,7 +4,7 @@ import dbConnect from '@/lib/mongodb';
 import Task from '@/models/Task';
 import { authOptions } from '@/lib/auth';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
