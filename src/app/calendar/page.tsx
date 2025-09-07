@@ -57,7 +57,8 @@ export default function Calendar() {
       const response = await fetch('/api/schedules');
       if (response.ok) {
         const data = await response.json();
-        setSchedules(data);
+        const schedules = Array.isArray(data) ? data : (data.schedules || []);
+        setSchedules(schedules);
       }
     } catch (error) {
       console.error('Error fetching schedules:', error);
@@ -71,7 +72,8 @@ export default function Calendar() {
       const response = await fetch('/api/projects');
       if (response.ok) {
         const data = await response.json();
-        setProjects(data);
+        const projects = Array.isArray(data) ? data : (data.projects || []);
+        setProjects(projects);
       }
     } catch (error) {
       console.error('Error fetching projects:', error);

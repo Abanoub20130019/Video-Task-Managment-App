@@ -1,38 +1,35 @@
-import { NextResponse } from 'next/server';
-import dbConnect, { testConnection } from '@/lib/mongodb';
+import { NextRequest, NextResponse } from 'next/server';
+import dbConnect from '@/lib/mongodb';
+import Project from '@/models/Project';
+import Client from '@/models/Client';
+import User from '@/models/User';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Test the connection
-    const result = await testConnection();
-
-    if (result.success) {
-      // Also try to get some basic info
-      const mongoose = await dbConnect();
-      const dbName = mongoose.connection.db.databaseName;
-      const collections = await mongoose.connection.db.listCollections().toArray();
-
-      return NextResponse.json({
-        status: 'success',
-        message: result.message,
-        database: dbName,
-        collectionsCount: collections.length,
-        collections: collections.map((col: any) => col.name),
-        timestamp: new Date().toISOString()
-      });
-    } else {
-      return NextResponse.json({
-        status: 'error',
-        message: result.message,
-        error: result.error,
-        timestamp: new Date().toISOString()
-      }, { status: 500 });
-    }
-  } catch (error) {
-    console.error('Test DB API error:', error);
+    // Test database connection
+    await dbConnect();
+    
+    // Test basic queries
+    const projectCount = await Project.countDocuments();
+    const clientCount = await Client.countDocuments();
+    const userCount = await User.countDocuments();
+    
     return NextResponse.json({
-      status: 'error',
-      message: 'Internal server error',
+      success: true,
+      message: 'Database connection successful',
+      counts: {
+        projects: projectCount,
+        clients: clientCount,
+        users: userCount
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Database test error:', error);
+    
+    return NextResponse.json({
+      success: false,
+      message: 'Database connection failed',
       error: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     }, { status: 500 });

@@ -47,8 +47,12 @@ export default function ReportsPage() {
       ]);
 
       if (projectsRes.ok && tasksRes.ok) {
-        const projects = await projectsRes.json();
-        const tasks = await tasksRes.json();
+        const projectsData = await projectsRes.json();
+        const tasksData = await tasksRes.json();
+
+        // Ensure we have arrays
+        const projects = Array.isArray(projectsData) ? projectsData : (projectsData.projects || []);
+        const tasks = Array.isArray(tasksData) ? tasksData : (tasksData.tasks || []);
 
         // Calculate stats
         const totalProjects = projects.length;

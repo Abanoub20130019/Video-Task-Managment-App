@@ -50,33 +50,50 @@ export default function Dashboard() {
 
       // Fetch projects count - use limit=1 to get just the count efficiently
       const projectsResponse = await fetch('/api/projects?limit=1');
+      if (projectsResponse.status === 401) {
+        // User is not authenticated, redirect to sign in
+        router.push('/auth/signin');
+        return;
+      }
       if (!projectsResponse.ok) {
-        throw new Error(`Failed to fetch projects: ${projectsResponse.status}`);
+        throw new Error(`Failed to fetch projects: ${projectsResponse.status} ${projectsResponse.statusText}`);
       }
       const projectsData = await projectsResponse.json();
 
       // Fetch tasks count - use limit=1 to get just the count efficiently
       const tasksResponse = await fetch('/api/tasks?limit=1');
+      if (tasksResponse.status === 401) {
+        router.push('/auth/signin');
+        return;
+      }
       if (!tasksResponse.ok) {
-        throw new Error(`Failed to fetch tasks: ${tasksResponse.status}`);
+        throw new Error(`Failed to fetch tasks: ${tasksResponse.status} ${tasksResponse.statusText}`);
       }
       const tasksData = await tasksResponse.json();
 
       // Fetch users count - use limit=1 to get just the count efficiently
       const usersResponse = await fetch('/api/users?limit=1');
+      if (usersResponse.status === 401) {
+        router.push('/auth/signin');
+        return;
+      }
       if (!usersResponse.ok) {
-        throw new Error(`Failed to fetch users: ${usersResponse.status}`);
+        throw new Error(`Failed to fetch users: ${usersResponse.status} ${usersResponse.statusText}`);
       }
       const usersData = await usersResponse.json();
 
       // For calculating active tasks and upcoming deadlines, we need to fetch more tasks
       // We'll fetch all tasks and filter client-side for now (can be optimized later)
       const activeTasksResponse = await fetch('/api/tasks?limit=1000');
+      if (activeTasksResponse.status === 401) {
+        router.push('/auth/signin');
+        return;
+      }
       if (!activeTasksResponse.ok) {
-        throw new Error(`Failed to fetch active tasks: ${activeTasksResponse.status}`);
+        throw new Error(`Failed to fetch active tasks: ${activeTasksResponse.status} ${activeTasksResponse.statusText}`);
       }
       const activeTasksData = await activeTasksResponse.json();
-      const allTasks = activeTasksData.tasks || [];
+      const allTasks = Array.isArray(activeTasksData.tasks) ? activeTasksData.tasks : [];
       
       // Filter active tasks (not completed)
       const activeTasks = allTasks.filter((task: ApiTask) => task.status !== 'completed').length;
@@ -105,6 +122,8 @@ export default function Dashboard() {
       showSuccess('Dashboard data loaded successfully!');
     } catch (error) {
       dismissToast(loadingToast);
+      console.error('Dashboard fetch error:', error);
+      
       const errorMessage = error instanceof Error ? error.message : 'Failed to load dashboard data';
       showError(errorMessage);
       
