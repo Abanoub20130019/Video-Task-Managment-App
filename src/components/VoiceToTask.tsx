@@ -166,7 +166,7 @@ export default function VoiceToTask({ onTaskCreated, projectId, className = '' }
         },
         body: JSON.stringify({
           ...taskData,
-          projectId: projectId || taskData.projectId,
+          projectId: projectId,
         }),
       });
 
