@@ -484,10 +484,10 @@ export class TrelloIntegration {
     try {
       const lists = await this.getLists();
       const statusToListMap = {
-        'todo': lists.find(l => l.name.toLowerCase().includes('to do') || l.name.toLowerCase().includes('todo')),
-        'in_progress': lists.find(l => l.name.toLowerCase().includes('progress') || l.name.toLowerCase().includes('doing')),
-        'review': lists.find(l => l.name.toLowerCase().includes('review')),
-        'completed': lists.find(l => l.name.toLowerCase().includes('done') || l.name.toLowerCase().includes('complete')),
+        'todo': lists.find((l: any) => l.name.toLowerCase().includes('to do') || l.name.toLowerCase().includes('todo')),
+        'in_progress': lists.find((l: any) => l.name.toLowerCase().includes('progress') || l.name.toLowerCase().includes('doing')),
+        'review': lists.find((l: any) => l.name.toLowerCase().includes('review')),
+        'completed': lists.find((l: any) => l.name.toLowerCase().includes('done') || l.name.toLowerCase().includes('complete')),
       };
 
       const results = [];
@@ -503,7 +503,7 @@ export class TrelloIntegration {
             );
             results.push({ taskId: task._id, cardId: card.id, success: true });
           } catch (error) {
-            results.push({ taskId: task._id, success: false, error: error.message });
+            results.push({ taskId: task._id, success: false, error: (error as Error).message });
           }
         }
       }
