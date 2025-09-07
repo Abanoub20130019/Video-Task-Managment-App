@@ -41,6 +41,7 @@ const baseProjectSchema = z.object({
   description: z.string().max(2000, 'Description must be less than 2000 characters').optional(),
   clientId: z.string().min(1, 'Client ID is required'),
   projectManagerId: z.string().min(1, 'Project manager ID is required'),
+  crewMembers: z.array(z.string().min(1, 'Crew member ID is required')).default([]),
   status: projectStatusSchema.default('planning'),
   budget: z.number().min(0, 'Budget must be positive').max(10000000, 'Budget too large').default(0),
   startDate: z.string().datetime('Invalid start date format').or(z.date()),

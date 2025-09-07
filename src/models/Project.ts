@@ -5,6 +5,7 @@ export interface IProject extends Document {
   description: string;
   clientId: mongoose.Types.ObjectId;
   projectManagerId: mongoose.Types.ObjectId;
+  crewMembers: mongoose.Types.ObjectId[];
   status: 'planning' | 'active' | 'on_hold' | 'completed';
   budget: number;
   startDate: Date;
@@ -34,6 +35,10 @@ const ProjectSchema: Schema = new Schema({
     ref: 'User',
     required: true,
   },
+  crewMembers: [{
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+  }],
   status: {
     type: String,
     enum: ['planning', 'active', 'on_hold', 'completed'],
@@ -64,6 +69,7 @@ const ProjectSchema: Schema = new Schema({
 // Indexes for better query performance
 ProjectSchema.index({ clientId: 1 });
 ProjectSchema.index({ projectManagerId: 1 });
+ProjectSchema.index({ crewMembers: 1 });
 ProjectSchema.index({ status: 1 });
 
 export default mongoose.models.Project || mongoose.model<IProject>('Project', ProjectSchema);

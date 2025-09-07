@@ -154,11 +154,77 @@ body {
   border-color: var(--border-secondary);
 }
 
-/* Smooth transitions for theme changes */
+/* Enhanced smooth transitions for theme changes */
 * {
-  transition-property: background-color, border-color, color, fill, stroke;
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow, opacity;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 200ms;
+  transition-duration: 300ms;
+}
+
+/* Enhanced backdrop blur support */
+.backdrop-blur-sm {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.backdrop-blur-md {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Dark mode enhancements */
+.dark {
+  color-scheme: dark;
+}
+
+/* Enhanced scrollbar styling for dark mode */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-secondary);
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+/* Dark mode specific scrollbar */
+.dark ::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--border-secondary);
+}
+
+/* Enhanced focus styles for dark mode */
+.dark *:focus {
+  outline-color: var(--accent-primary);
+}
+
+/* Better selection colors */
+::selection {
+  background-color: var(--accent-primary);
+  color: white;
+}
+
+.dark ::selection {
+  background-color: var(--accent-secondary);
+  color: white;
 }
 
 /* Screen reader only class */

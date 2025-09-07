@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Validation failed' }, { status: 400 });
     }
 
-    const { name, description, clientId, projectManagerId, budget, startDate, endDate, status } = validation.data as any;
+    const { name, description, clientId, projectManagerId, crewMembers, budget, startDate, endDate, status } = validation.data as any;
 
     await dbConnect();
     
@@ -156,6 +156,7 @@ export async function POST(request: NextRequest) {
       description,
       clientId,
       projectManagerId,
+      crewMembers: crewMembers || [],
       budget,
       startDate,
       endDate,
@@ -164,7 +165,8 @@ export async function POST(request: NextRequest) {
 
     const populatedProject = await (Project as any).findById(project._id)
       .populate('clientId', 'name email')
-      .populate('projectManagerId', 'name email');
+      .populate('projectManagerId', 'name email')
+      .populate('crewMembers', 'name email role');
 
     return NextResponse.json(populatedProject, { status: 201 });
   } catch (error) {

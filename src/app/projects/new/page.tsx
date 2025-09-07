@@ -28,6 +28,7 @@ export default function NewProject() {
     description: '',
     clientId: '',
     projectManagerId: '',
+    crewMembers: [] as string[],
     budget: '',
     startDate: '',
     endDate: '',
@@ -64,10 +65,11 @@ export default function NewProject() {
       const response = await fetch('/api/users');
       if (response.ok) {
         const data = await response.json();
-        setUsers(data);
+        setUsers(data.users || []);
       }
     } catch (error) {
       console.error('Error fetching users:', error);
+      setUsers([]); // Set empty array on error to prevent filter issues
     }
   };
 
@@ -84,6 +86,7 @@ export default function NewProject() {
         body: JSON.stringify({
           ...formData,
           budget: parseFloat(formData.budget) || 0,
+          crewMembers: formData.crewMembers,
         }),
       });
 
@@ -106,6 +109,15 @@ export default function NewProject() {
       ...formData,
       [e.target.name]: e.target.value,
     });
+  };
+
+  const handleCrewMemberToggle = (userId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      crewMembers: prev.crewMembers.includes(userId)
+        ? prev.crewMembers.filter(id => id !== userId)
+        : [...prev.crewMembers, userId]
+    }));
   };
 
   if (status === 'loading') {
@@ -211,6 +223,39 @@ export default function NewProject() {
                     ))}
                 </select>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Crew Members
+              </label>
+              <div className="border border-gray-300 rounded-md p-4 max-h-48 overflow-y-auto">
+                {users
+                  .filter((user) => user.role === 'crew_member')
+                  .map((user) => (
+                    <div key={user._id} className="flex items-center mb-2">
+                      <input
+                        type="checkbox"
+                        id={`crew-${user._id}`}
+                        checked={formData.crewMembers.includes(user._id)}
+                        onChange={() => handleCrewMemberToggle(user._id)}
+                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                      />
+                      <label
+                        htmlFor={`crew-${user._id}`}
+                        className="ml-2 text-sm text-gray-700 cursor-pointer"
+                      >
+                        {user.name} ({user.email})
+                      </label>
+                    </div>
+                  ))}
+                {users.filter((user) => user.role === 'crew_member').length === 0 && (
+                  <p className="text-sm text-gray-500">No crew members available</p>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Select crew members who will work on this project
+              </p>
             </div>
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
