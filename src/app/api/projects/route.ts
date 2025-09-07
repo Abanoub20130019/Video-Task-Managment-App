@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import dbConnect from '@/lib/mongodb';
 import Project from '@/models/Project';
 import { authOptions } from '@/lib/auth';
-import { validateProjectData, createErrorResponse, sanitizeObject } from '@/lib/validation';
+import { projectQuerySchema, createProjectSchema, validateRequestData, validateQueryParams } from '@/lib/zodSchemas';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,14 +13,59 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    
+    // Validate query parameters
+    const queryValidation = validateQueryParams(projectQuerySchema, searchParams);
+    if (!queryValidation.success) {
+      return NextResponse.json(
+        { error: 'Invalid query parameters', details: queryValidation.errors },
+        { status: 400 }
+      );
+    }
+
+    const { page, limit, search, status, clientId } = queryValidation.data;
+    const skip = (page - 1) * limit;
+
     await dbConnect();
 
-    const projects = await Project.find()
+    let query: any = {};
+    if (status) {
+      query.status = status;
+    }
+    if (clientId) {
+      query.clientId = clientId;
+    }
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Get total count for pagination metadata
+    const totalProjects = await Project.countDocuments(query);
+    const totalPages = Math.ceil(totalProjects / limit);
+
+    const projects = await Project.find(query)
       .populate('clientId', 'name email')
       .populate('projectManagerId', 'name email')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(); // Use lean() for better performance
 
-    return NextResponse.json(projects);
+    return NextResponse.json({
+      projects,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems: totalProjects,
+        itemsPerPage: limit,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1
+      }
+    });
   } catch (error) {
     console.error('Get projects error:', error);
     return NextResponse.json(
@@ -38,16 +83,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const rawData = await request.json();
-    const data = sanitizeObject(rawData);
-
-    // Validate data
-    const validationErrors = validateProjectData(data);
-    if (validationErrors.length > 0) {
-      return createErrorResponse(validationErrors);
+    const requestData = await request.json();
+    
+    // Validate request data
+    const validation = validateRequestData(createProjectSchema, requestData);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Invalid project data', details: validation.errors },
+        { status: 400 }
+      );
     }
 
-    const { name, description, clientId, projectManagerId, budget, startDate, endDate, status } = data;
+    const { name, description, clientId, projectManagerId, budget, startDate, endDate, status } = validation.data;
 
     await dbConnect();
 
@@ -56,10 +103,10 @@ export async function POST(request: NextRequest) {
       description,
       clientId,
       projectManagerId,
-      budget: budget || 0,
+      budget,
       startDate,
       endDate,
-      status: status || 'planning',
+      status,
     });
 
     const populatedProject = await Project.findById(project._id)

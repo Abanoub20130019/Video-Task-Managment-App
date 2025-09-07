@@ -35,70 +35,94 @@ export async function extendedSeedDatabase() {
 
     // Add more users if needed
     if (existingUsers < 50) {
-      const hashedPassword = await hashPassword('password123');
+      // Generate secure passwords for each additional user
+      const generateSecurePassword = () => {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+        let password = '';
+        for (let i = 0; i < 16; i++) {
+          password += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return password;
+      };
+
+      // Generate secure passwords for all additional users
+      const securePasswords = await Promise.all([
+        hashPassword(generateSecurePassword()),
+        hashPassword(generateSecurePassword()),
+        hashPassword(generateSecurePassword()),
+        hashPassword(generateSecurePassword()),
+        hashPassword(generateSecurePassword()),
+        hashPassword(generateSecurePassword()),
+        hashPassword(generateSecurePassword()),
+        hashPassword(generateSecurePassword()),
+        hashPassword(generateSecurePassword()),
+        hashPassword(generateSecurePassword()),
+      ]);
 
       const additionalUsers = [
         {
           name: 'Sarah Mitchell',
           email: 'sarah.mitchell@example.com',
-          password: hashedPassword,
+          password: securePasswords[0],
           role: 'project_manager',
         },
         {
           name: 'David Chen',
           email: 'david.chen@example.com',
-          password: hashedPassword,
+          password: securePasswords[1],
           role: 'crew_member',
         },
         {
           name: 'Emily Rodriguez',
           email: 'emily.rodriguez@example.com',
-          password: hashedPassword,
+          password: securePasswords[2],
           role: 'crew_member',
         },
         {
           name: 'Michael Thompson',
           email: 'michael.thompson@example.com',
-          password: hashedPassword,
+          password: securePasswords[3],
           role: 'crew_member',
         },
         {
           name: 'Jessica Park',
           email: 'jessica.park@example.com',
-          password: hashedPassword,
+          password: securePasswords[4],
           role: 'crew_member',
         },
         {
           name: 'Christopher Lee',
           email: 'christopher.lee@example.com',
-          password: hashedPassword,
+          password: securePasswords[5],
           role: 'project_manager',
         },
         {
           name: 'Amanda White',
           email: 'amanda.white@example.com',
-          password: hashedPassword,
+          password: securePasswords[6],
           role: 'crew_member',
         },
         {
           name: 'Daniel Kim',
           email: 'daniel.kim@example.com',
-          password: hashedPassword,
+          password: securePasswords[7],
           role: 'crew_member',
         },
         {
           name: 'Rachel Green',
           email: 'rachel.green@example.com',
-          password: hashedPassword,
+          password: securePasswords[8],
           role: 'crew_member',
         },
         {
           name: 'Kevin Brown',
           email: 'kevin.brown@example.com',
-          password: hashedPassword,
+          password: securePasswords[9],
           role: 'crew_member',
         },
       ];
+
+      console.log('🔐 Extended seed users will have secure random passwords generated');
 
       // Check for existing emails and filter out duplicates
       const existingEmails = await User.find({ email: { $in: additionalUsers.map(u => u.email) } }).select('email');

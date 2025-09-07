@@ -4,6 +4,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { ThemeToggle } from '@/lib/theme';
 
 export default function Header() {
   const { data: session, status } = useSession();
@@ -86,6 +87,8 @@ export default function Header() {
 
           {/* Enhanced User Menu */}
           <div className="flex items-center space-x-3">
+            {/* Theme Toggle */}
+            <ThemeToggle />
             {/* Enhanced User Info */}
             <div className="hidden md:flex items-center space-x-3 bg-white rounded-full px-3 py-1.5 shadow-sm border border-gray-100">
               <div className="relative">

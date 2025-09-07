@@ -34,101 +34,131 @@ export async function seedDatabase() {
     await ResourceAllocation.deleteMany({});
     await Budget.deleteMany({});
 
-    // Create users
-    const hashedPassword = await hashPassword('password123');
+    // Create users with secure passwords
+    // Generate secure passwords for each user
+    const generateSecurePassword = () => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+      let password = '';
+      for (let i = 0; i < 16; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return password;
+    };
+
+    // For demo purposes, admin gets a known password, others get secure random ones
+    const adminPassword = await hashPassword('Admin123!@#');
+    const userPasswords = await Promise.all([
+      hashPassword(generateSecurePassword()),
+      hashPassword(generateSecurePassword()),
+      hashPassword(generateSecurePassword()),
+      hashPassword(generateSecurePassword()),
+      hashPassword(generateSecurePassword()),
+      hashPassword(generateSecurePassword()),
+      hashPassword(generateSecurePassword()),
+      hashPassword(generateSecurePassword()),
+      hashPassword(generateSecurePassword()),
+      hashPassword(generateSecurePassword()),
+      hashPassword(generateSecurePassword()),
+      hashPassword(generateSecurePassword()),
+      hashPassword(generateSecurePassword()),
+      hashPassword(generateSecurePassword()),
+    ]);
 
     const users = await User.insertMany([
       {
         name: 'John Doe',
         email: 'admin@example.com',
-        password: hashedPassword,
+        password: adminPassword,
         role: 'admin',
       },
       {
         name: 'Jane Smith',
         email: 'jane@example.com',
-        password: hashedPassword,
+        password: userPasswords[0],
         role: 'project_manager',
       },
       {
         name: 'Mike Johnson',
         email: 'mike@example.com',
-        password: hashedPassword,
+        password: userPasswords[1],
         role: 'project_manager',
       },
       {
         name: 'Alice Brown',
         email: 'alice@example.com',
-        password: hashedPassword,
+        password: userPasswords[2],
         role: 'crew_member',
       },
       {
         name: 'Bob Wilson',
         email: 'bob@example.com',
-        password: hashedPassword,
+        password: userPasswords[3],
         role: 'crew_member',
       },
       {
         name: 'Carol Davis',
         email: 'carol@example.com',
-        password: hashedPassword,
+        password: userPasswords[4],
         role: 'crew_member',
       },
       {
         name: 'David Lee',
         email: 'david@example.com',
-        password: hashedPassword,
+        password: userPasswords[5],
         role: 'crew_member',
       },
       {
         name: 'Emma Garcia',
         email: 'emma@example.com',
-        password: hashedPassword,
+        password: userPasswords[6],
         role: 'crew_member',
       },
       {
         name: 'Frank Miller',
         email: 'frank@example.com',
-        password: hashedPassword,
+        password: userPasswords[7],
         role: 'project_manager',
       },
       {
         name: 'Grace Taylor',
         email: 'grace@example.com',
-        password: hashedPassword,
+        password: userPasswords[8],
         role: 'crew_member',
       },
       {
         name: 'Henry Wilson',
         email: 'henry@example.com',
-        password: hashedPassword,
+        password: userPasswords[9],
         role: 'crew_member',
       },
       {
         name: 'Ivy Chen',
         email: 'ivy@example.com',
-        password: hashedPassword,
+        password: userPasswords[10],
         role: 'crew_member',
       },
       {
         name: 'Jack Rodriguez',
         email: 'jack@example.com',
-        password: hashedPassword,
+        password: userPasswords[11],
         role: 'crew_member',
       },
       {
         name: 'Kelly Martinez',
         email: 'kelly@example.com',
-        password: hashedPassword,
+        password: userPasswords[12],
         role: 'crew_member',
       },
       {
         name: 'Liam Anderson',
         email: 'liam@example.com',
-        password: hashedPassword,
+        password: userPasswords[13],
         role: 'crew_member',
       },
     ]);
+
+    console.log('🔐 Admin login: admin@example.com / Admin123!@#');
+    console.log('🔐 Other users have secure random passwords generated');
 
     // Create clients
     const clients = await Client.insertMany([

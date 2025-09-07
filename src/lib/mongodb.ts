@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
+import { dbLogger } from './logger';
 
-// Your MongoDB Atlas connection string
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://abanobhakim_db_user:suBvxtocmQ0SKjMS@cluster0.vux2yvb.mongodb.net/video_task_manager?retryWrites=true&w=majority&appName=Cluster0';
+// MongoDB Atlas connection string from environment variables
+const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
@@ -32,8 +33,8 @@ async function dbConnect() {
       family: 4, // Use IPv4, skip trying IPv6
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      console.log('✅ Connected to MongoDB Atlas successfully!');
+    cached.promise = mongoose.connect(MONGODB_URI as string, opts).then((mongoose) => {
+      dbLogger.info('Connected to MongoDB Atlas successfully');
       return mongoose;
     });
   }
@@ -42,7 +43,7 @@ async function dbConnect() {
     cached.conn = await cached.promise;
   } catch (e) {
     cached.promise = null;
-    console.error('❌ MongoDB connection error:', e);
+    dbLogger.error('MongoDB connection error', e);
     throw e;
   }
 
@@ -52,12 +53,12 @@ async function dbConnect() {
 // Test connection function
 export async function testConnection() {
   try {
-    console.log('🔄 Testing MongoDB connection...');
+    dbLogger.info('Testing MongoDB connection...');
     await dbConnect();
-    console.log('✅ MongoDB connection test successful!');
+    dbLogger.info('MongoDB connection test successful');
     return { success: true, message: 'Connected to MongoDB successfully!' };
   } catch (error) {
-    console.error('❌ MongoDB connection test failed:', error);
+    dbLogger.error('MongoDB connection test failed', error);
     return {
       success: false,
       message: 'Failed to connect to MongoDB',

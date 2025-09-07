@@ -7,6 +7,7 @@ export interface ITask extends Document {
   assignedTo: mongoose.Types.ObjectId;
   status: 'todo' | 'in_progress' | 'review' | 'completed';
   priority: 'low' | 'medium' | 'high';
+  startDate?: Date;
   dueDate: Date;
   estimatedHours: number;
   actualHours: number;
@@ -44,6 +45,10 @@ const TaskSchema: Schema = new Schema({
     enum: ['low', 'medium', 'high'],
     default: 'medium',
   },
+  startDate: {
+    type: Date,
+    required: false,
+  },
   dueDate: {
     type: Date,
     required: true,
@@ -64,6 +69,7 @@ const TaskSchema: Schema = new Schema({
 TaskSchema.index({ projectId: 1 });
 TaskSchema.index({ assignedTo: 1 });
 TaskSchema.index({ status: 1 });
+TaskSchema.index({ startDate: 1 });
 TaskSchema.index({ dueDate: 1 });
 
 export default mongoose.models.Task || mongoose.model<ITask>('Task', TaskSchema);

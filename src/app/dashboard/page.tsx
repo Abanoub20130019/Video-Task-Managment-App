@@ -3,8 +3,16 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+
+interface ApiTask {
+  status: string;
+  dueDate?: string;
+}
 import Link from 'next/link';
 import Notifications from '@/components/Notifications';
+import { showError, showSuccess, showLoading, dismissToast } from '@/lib/toast';
+import { CacheService, CacheKeys, CacheTTL } from '@/lib/redis';
+import { apiLogger } from '@/lib/logger';
 
 interface DashboardStats {
   totalProjects: number;
@@ -16,7 +24,6 @@ interface DashboardStats {
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [seeding, setSeeding] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({
     totalProjects: 0,
     activeTasks: 0,
@@ -38,74 +45,116 @@ export default function Dashboard() {
   }, [session]);
 
   const fetchDashboardStats = async () => {
+    const loadingToast = showLoading('Loading dashboard data...');
+    const startTime = Date.now();
+    
     try {
       setLoading(true);
+      apiLogger.info('Fetching dashboard stats', { userId: session?.user?.id });
 
-      // Fetch projects count
-      const projectsResponse = await fetch('/api/projects');
-      const projects = projectsResponse.ok ? await projectsResponse.json() : [];
+      // Try to get cached dashboard stats first
+      const cacheKey = CacheKeys.dashboardStats(session?.user?.id);
+      const cachedStats = await CacheService.get<DashboardStats>(cacheKey);
+      
+      if (cachedStats) {
+        apiLogger.info('Dashboard stats loaded from cache', {
+          cacheKey,
+          duration: Date.now() - startTime
+        });
+        setStats(cachedStats);
+        dismissToast(loadingToast);
+        showSuccess('Dashboard data loaded from cache!');
+        return;
+      }
 
-      // Fetch tasks count
-      const tasksResponse = await fetch('/api/tasks');
-      const tasks = tasksResponse.ok ? await tasksResponse.json() : [];
+      // If not cached, fetch from API
+      apiLogger.info('Cache miss, fetching dashboard stats from API');
 
-      // Fetch users count
-      const usersResponse = await fetch('/api/users');
-      const users = usersResponse.ok ? await usersResponse.json() : [];
+      // Fetch projects count - use limit=1 to get just the count efficiently
+      const projectsResponse = await fetch('/api/projects?limit=1');
+      if (!projectsResponse.ok) {
+        throw new Error(`Failed to fetch projects: ${projectsResponse.status}`);
+      }
+      const projectsData = await projectsResponse.json();
 
-      // Calculate active tasks (not completed)
-      const activeTasks = tasks.filter((task: any) => task.status !== 'completed').length;
+      // Fetch tasks count - use limit=1 to get just the count efficiently
+      const tasksResponse = await fetch('/api/tasks?limit=1');
+      if (!tasksResponse.ok) {
+        throw new Error(`Failed to fetch tasks: ${tasksResponse.status}`);
+      }
+      const tasksData = await tasksResponse.json();
+
+      // Fetch users count - use limit=1 to get just the count efficiently
+      const usersResponse = await fetch('/api/users?limit=1');
+      if (!usersResponse.ok) {
+        throw new Error(`Failed to fetch users: ${usersResponse.status}`);
+      }
+      const usersData = await usersResponse.json();
+
+      // For calculating active tasks and upcoming deadlines, we need to fetch more tasks
+      // We'll fetch all tasks and filter client-side for now (can be optimized later)
+      const activeTasksResponse = await fetch('/api/tasks?limit=1000');
+      if (!activeTasksResponse.ok) {
+        throw new Error(`Failed to fetch active tasks: ${activeTasksResponse.status}`);
+      }
+      const activeTasksData = await activeTasksResponse.json();
+      const allTasks = activeTasksData.tasks || [];
+      
+      // Filter active tasks (not completed)
+      const activeTasks = allTasks.filter((task: ApiTask) => task.status !== 'completed').length;
 
       // Calculate upcoming deadlines (tasks due within 7 days)
       const now = new Date();
       const sevenDaysFromNow = new Date();
       sevenDaysFromNow.setDate(now.getDate() + 7);
 
-      const upcomingDeadlines = tasks.filter((task: any) => {
-        if (!task.dueDate) return false;
+      const upcomingDeadlines = allTasks.filter((task: ApiTask) => {
+        if (!task.dueDate || task.status === 'completed') return false;
         const dueDate = new Date(task.dueDate);
         return dueDate >= now && dueDate <= sevenDaysFromNow;
       }).length;
 
-      setStats({
-        totalProjects: projects.length,
+      const dashboardStats = {
+        totalProjects: projectsData.pagination?.totalItems || 0,
         activeTasks,
         upcomingDeadlines,
-        teamMembers: users.length,
+        teamMembers: usersData.pagination?.totalItems || 0,
+      };
+
+      // Cache the results
+      await CacheService.set(cacheKey, dashboardStats, CacheTTL.DASHBOARD_STATS);
+      
+      setStats(dashboardStats);
+
+      const duration = Date.now() - startTime;
+      apiLogger.info('Dashboard stats fetched and cached', {
+        duration,
+        stats: dashboardStats
       });
+
+      dismissToast(loadingToast);
+      showSuccess('Dashboard data loaded successfully!');
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
+      dismissToast(loadingToast);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load dashboard data';
+      apiLogger.error('Failed to fetch dashboard stats', error, {
+        userId: session?.user?.id,
+        duration: Date.now() - startTime
+      });
+      showError(errorMessage);
+      
+      // Set default values on error
+      setStats({
+        totalProjects: 0,
+        activeTasks: 0,
+        upcomingDeadlines: 0,
+        teamMembers: 0,
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSeedDatabase = async () => {
-    if (!confirm('This will clear all existing data and add dummy data. Are you sure?')) {
-      return;
-    }
-
-    setSeeding(true);
-    try {
-      const response = await fetch('/api/seed', {
-        method: 'POST',
-      });
-
-      if (response.ok) {
-        alert('Database seeded successfully!');
-        // Refresh dashboard stats instead of full reload
-        await fetchDashboardStats();
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Error seeding database');
-      }
-    } catch (error) {
-      console.error('Error seeding database:', error);
-      alert('Error seeding database');
-    } finally {
-      setSeeding(false);
-    }
-  };
 
   if (status === 'loading') {
     return (
@@ -139,15 +188,6 @@ export default function Dashboard() {
               >
                 Create Project
               </Link>
-              {session.user.role === 'admin' && (
-                <button
-                  onClick={handleSeedDatabase}
-                  disabled={seeding}
-                  className="ml-3 inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 disabled:opacity-50"
-                >
-                  {seeding ? 'Seeding...' : 'Seed Database'}
-                </button>
-              )}
             </div>
           </div>
         </div>
