@@ -2,10 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import dbConnect from '@/lib/mongodb';
 import Task from '@/models/Task';
+import Project from '@/models/Project';
+import User from '@/models/User';
+import Client from '@/models/Client';
 import { authOptions } from '@/lib/auth';
 import { taskQuerySchema, createTaskSchema, validateRequestData, validateQueryParams } from '@/lib/zodSchemas';
 import { TaskAuditLogger } from '@/lib/auditLog';
 import { apiLogger } from '@/lib/logger';
+
+// Ensure models are registered by importing them
+// This prevents the MissingSchemaError during populate operations
+const ensureModelsRegistered = () => {
+  // Force model registration by accessing the models
+  Task;
+  Project;
+  User;
+  Client;
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,6 +44,9 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     await dbConnect();
+    
+    // Ensure all models are registered before populate operations
+    ensureModelsRegistered();
 
     let query: any = {};
     if (projectId) {
@@ -104,6 +120,9 @@ export async function POST(request: NextRequest) {
     const { projectId, title, description, assignedTo, priority, dueDate, startDate, estimatedHours } = validation.data as any;
 
     await dbConnect();
+    
+    // Ensure all models are registered before database operations
+    ensureModelsRegistered();
 
     const task = await Task.create({
       projectId,

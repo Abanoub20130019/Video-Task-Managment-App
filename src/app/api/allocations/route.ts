@@ -2,7 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import dbConnect from '@/lib/mongodb';
 import ResourceAllocation from '@/models/ResourceAllocation';
+import Equipment from '@/models/Equipment';
+import Project from '@/models/Project';
+import Schedule from '@/models/Schedule';
+import User from '@/models/User';
+import Client from '@/models/Client';
 import { authOptions } from '@/lib/auth';
+
+// Ensure models are registered by importing them
+// This prevents the MissingSchemaError during populate operations
+const ensureModelsRegistered = () => {
+  // Force model registration by accessing the models
+  Equipment;
+  Project;
+  Schedule;
+  User;
+  Client;
+  ResourceAllocation;
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,6 +33,9 @@ export async function GET(request: NextRequest) {
     const projectId = searchParams.get('projectId');
 
     await dbConnect();
+    
+    // Ensure all models are registered before populate operations
+    ensureModelsRegistered();
 
     let query: any = {};
     if (projectId) {
@@ -57,6 +77,9 @@ export async function POST(request: NextRequest) {
     }
 
     await dbConnect();
+    
+    // Ensure all models are registered before database operations
+    ensureModelsRegistered();
 
     const allocation = await (ResourceAllocation as any).create({
       projectId,
