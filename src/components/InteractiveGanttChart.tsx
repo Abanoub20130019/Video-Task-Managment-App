@@ -71,9 +71,10 @@ export default function InteractiveGanttChart({
       .attr('transform', `translate(${margin.left},${margin.top})`);
 
     // Add background grid
+    const weekInterval = d3.timeWeek.every(1);
     const xAxis = d3.axisBottom(xScale)
       .tickFormat(d3.timeFormat('%m/%d') as any)
-      .ticks(d3.timeWeek.every(1));
+      .ticks(weekInterval || d3.timeWeek);
 
     g.append('g')
       .attr('class', 'x-axis')
@@ -84,18 +85,20 @@ export default function InteractiveGanttChart({
       .style('fill', 'var(--text-secondary)');
 
     // Add vertical grid lines
-    g.selectAll('.grid-line')
-      .data(xScale.ticks(d3.timeWeek.every(1)))
-      .enter()
-      .append('line')
-      .attr('class', 'grid-line')
-      .attr('x1', d => xScale(d))
-      .attr('x2', d => xScale(d))
-      .attr('y1', 0)
-      .attr('y2', height)
-      .style('stroke', 'var(--border-primary)')
-      .style('stroke-width', 1)
-      .style('opacity', 0.3);
+    if (weekInterval) {
+      g.selectAll('.grid-line')
+        .data(xScale.ticks(weekInterval))
+        .enter()
+        .append('line')
+        .attr('class', 'grid-line')
+        .attr('x1', (d: any) => xScale(d))
+        .attr('x2', (d: any) => xScale(d))
+        .attr('y1', 0)
+        .attr('y2', height)
+        .style('stroke', 'var(--border-primary)')
+        .style('stroke-width', 1)
+        .style('opacity', 0.3);
+    }
 
     // Color mapping for task status
     const statusColors = {
