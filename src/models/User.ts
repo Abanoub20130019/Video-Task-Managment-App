@@ -39,7 +39,7 @@ const UserSchema: Schema = new Schema({
   timestamps: true,
 });
 
-// Index for faster queries
-UserSchema.index({ email: 1 });
+// Index for faster queries (email index is already created by unique: true)
+// UserSchema.index({ email: 1 }); // Removed duplicate index
 
 export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema);

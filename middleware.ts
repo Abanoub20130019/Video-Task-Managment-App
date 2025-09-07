@@ -85,14 +85,14 @@ export function middleware(request: NextRequest) {
   // Referrer policy
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
-  // Content Security Policy (basic)
+  // Content Security Policy (optimized for online deployment)
   response.headers.set('Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-    "style-src 'self' 'unsafe-inline'; " +
-    "img-src 'self' data: https:; " +
-    "font-src 'self'; " +
-    "connect-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://*.vercel.app; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "img-src 'self' data: https: blob:; " +
+    "font-src 'self' https://fonts.gstatic.com; " +
+    "connect-src 'self' https://*.mongodb.net https://*.vercel.app wss://*.pusher.com; " +
     "frame-ancestors 'none';"
   );
 

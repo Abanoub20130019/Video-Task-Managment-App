@@ -14,13 +14,13 @@ export default function PWAInstaller() {
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
-    // Register service worker
+    // Register service worker for online-first operation
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker
         .register('/sw.js')
         .then((registration) => {
           console.log('Service Worker registered successfully:', registration);
-          showSuccess('App is ready for offline use!');
+          showSuccess('App enhanced with PWA features!');
           
           // Check for updates
           registration.addEventListener('updatefound', () => {
@@ -36,7 +36,7 @@ export default function PWAInstaller() {
         })
         .catch((error) => {
           console.error('Service Worker registration failed:', error);
-          showError('Failed to enable offline features');
+          showError('Failed to enable PWA features');
         });
     }
 
@@ -109,7 +109,7 @@ export default function PWAInstaller() {
               Install Video Task Manager
             </h4>
             <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-              Install the app for quick access and offline functionality
+              Install the app for quick access and enhanced performance
             </p>
             <div className="flex space-x-2 mt-3">
               <button

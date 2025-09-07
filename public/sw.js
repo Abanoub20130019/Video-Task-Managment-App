@@ -1,25 +1,16 @@
-const CACHE_NAME = 'video-task-manager-v1';
-const STATIC_CACHE_NAME = 'video-task-manager-static-v1';
-const DYNAMIC_CACHE_NAME = 'video-task-manager-dynamic-v1';
+const CACHE_NAME = 'video-task-manager-v2';
+const STATIC_CACHE_NAME = 'video-task-manager-static-v2';
+const DYNAMIC_CACHE_NAME = 'video-task-manager-dynamic-v2';
 
-// Assets to cache immediately
+// Minimal assets to cache for basic offline functionality
 const STATIC_ASSETS = [
-  '/',
-  '/dashboard',
-  '/projects',
-  '/calendar',
-  '/resources',
-  '/budget',
-  '/reports',
-  '/equipment',
   '/manifest.json',
   '/next.svg',
   '/vercel.svg',
-  // Add other static assets as needed
 ];
 
-// API routes to cache with different strategies
-const API_CACHE_ROUTES = [
+// API routes that can be cached (read-only operations)
+const CACHEABLE_API_ROUTES = [
   '/api/projects',
   '/api/tasks',
   '/api/users',
@@ -27,18 +18,18 @@ const API_CACHE_ROUTES = [
   '/api/equipment',
 ];
 
-// Install event - cache static assets
+// Install event - cache minimal static assets
 self.addEventListener('install', (event) => {
-  console.log('Service Worker: Installing...');
+  console.log('Service Worker: Installing for online-first mode...');
   
   event.waitUntil(
     caches.open(STATIC_CACHE_NAME)
       .then((cache) => {
-        console.log('Service Worker: Caching static assets');
+        console.log('Service Worker: Caching minimal static assets');
         return cache.addAll(STATIC_ASSETS);
       })
       .then(() => {
-        console.log('Service Worker: Static assets cached');
+        console.log('Service Worker: Ready for online-first operation');
         return self.skipWaiting();
       })
       .catch((error) => {
@@ -70,12 +61,12 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - implement caching strategies
+// Fetch event - implement online-first caching strategies
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET requests
+  // Skip non-GET requests for caching
   if (request.method !== 'GET') {
     return;
   }
@@ -85,16 +76,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle different types of requests
+  // Handle different types of requests with online-first approach
   if (url.pathname.startsWith('/api/')) {
-    // API requests - Network First strategy
-    event.respondWith(networkFirstStrategy(request));
-  } else if (STATIC_ASSETS.some(asset => url.pathname === asset || url.pathname.startsWith(asset))) {
-    // Static assets - Cache First strategy
+    // API requests - Always try network first, minimal caching
+    event.respondWith(onlineFirstApiStrategy(request));
+  } else if (STATIC_ASSETS.some(asset => url.pathname === asset)) {
+    // Static assets - Cache first for performance
     event.respondWith(cacheFirstStrategy(request));
   } else {
-    // Other requests - Stale While Revalidate strategy
-    event.respondWith(staleWhileRevalidateStrategy(request));
+    // Pages and other resources - Network first for fresh content
+    event.respondWith(networkFirstStrategy(request));
   }
 });
 
@@ -121,13 +112,54 @@ async function cacheFirstStrategy(request) {
   }
 }
 
-// Network First Strategy - for API calls
+// Online First Strategy for API calls - prioritize fresh data
+async function onlineFirstApiStrategy(request) {
+  try {
+    const networkResponse = await fetch(request);
+    
+    if (networkResponse.ok && CACHEABLE_API_ROUTES.some(route => request.url.includes(route))) {
+      // Only cache successful GET responses for read operations
+      const cache = await caches.open(DYNAMIC_CACHE_NAME);
+      cache.put(request, networkResponse.clone());
+    }
+    
+    return networkResponse;
+  } catch (error) {
+    console.log('Network unavailable, checking cache:', error);
+    
+    // Only return cached data for read operations
+    if (CACHEABLE_API_ROUTES.some(route => request.url.includes(route))) {
+      const cachedResponse = await caches.match(request);
+      if (cachedResponse) {
+        const response = cachedResponse.clone();
+        response.headers.set('X-Served-From', 'cache');
+        response.headers.set('X-Cache-Warning', 'Stale data - network unavailable');
+        return response;
+      }
+    }
+
+    // Return network error for non-cacheable requests
+    return new Response(JSON.stringify({
+      error: 'Network unavailable',
+      message: 'Please check your internet connection',
+      timestamp: new Date().toISOString()
+    }), {
+      status: 503,
+      statusText: 'Service Unavailable',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+  }
+}
+
+// Network First Strategy - for pages and resources
 async function networkFirstStrategy(request) {
   try {
     const networkResponse = await fetch(request);
     
     if (networkResponse.ok) {
-      // Cache successful API responses
+      // Cache successful responses
       const cache = await caches.open(DYNAMIC_CACHE_NAME);
       cache.put(request, networkResponse.clone());
     }
@@ -138,23 +170,34 @@ async function networkFirstStrategy(request) {
     
     const cachedResponse = await caches.match(request);
     if (cachedResponse) {
-      // Add offline indicator header
-      const response = cachedResponse.clone();
-      response.headers.set('X-Served-From', 'cache');
-      return response;
+      return cachedResponse;
     }
 
-    // Return offline response for API calls
-    return new Response(JSON.stringify({
-      error: 'Offline - Data not available',
-      offline: true,
-      timestamp: new Date().toISOString()
-    }), {
+    // Return basic offline page
+    return new Response(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Offline - Video Task Manager</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+            .offline-message { max-width: 400px; margin: 0 auto; }
+          </style>
+        </head>
+        <body>
+          <div class="offline-message">
+            <h1>You're Offline</h1>
+            <p>Please check your internet connection and try again.</p>
+            <button onclick="window.location.reload()">Retry</button>
+          </div>
+        </body>
+      </html>
+    `, {
       status: 503,
       statusText: 'Service Unavailable',
       headers: {
-        'Content-Type': 'application/json',
-        'X-Served-From': 'offline'
+        'Content-Type': 'text/html'
       }
     });
   }
@@ -229,35 +272,43 @@ async function removeOfflineAction(actionId) {
   console.log('Service Worker: Removing offline action', actionId);
 }
 
-// Push notification handling
+// Push notification handling (optimized for online use)
 self.addEventListener('push', (event) => {
   console.log('Service Worker: Push notification received', event);
   
+  let notificationData;
+  try {
+    notificationData = event.data ? event.data.json() : {};
+  } catch (e) {
+    notificationData = { body: event.data ? event.data.text() : 'New notification' };
+  }
+  
   const options = {
-    body: event.data ? event.data.text() : 'New notification from Video Task Manager',
+    body: notificationData.body || 'New notification from Video Task Manager',
     icon: '/icons/icon-192x192.png',
     badge: '/icons/badge-72x72.png',
-    vibrate: [100, 50, 100],
     data: {
-      dateOfArrival: Date.now(),
-      primaryKey: 1
+      url: notificationData.url || '/dashboard',
+      timestamp: Date.now()
     },
+    requireInteraction: false, // Don't require interaction for online use
     actions: [
       {
-        action: 'explore',
-        title: 'View Details',
-        icon: '/icons/checkmark.png'
+        action: 'view',
+        title: 'View'
       },
       {
-        action: 'close',
-        title: 'Close',
-        icon: '/icons/xmark.png'
+        action: 'dismiss',
+        title: 'Dismiss'
       }
     ]
   };
 
   event.waitUntil(
-    self.registration.showNotification('Video Task Manager', options)
+    self.registration.showNotification(
+      notificationData.title || 'Video Task Manager',
+      options
+    )
   );
 });
 
@@ -267,18 +318,20 @@ self.addEventListener('notificationclick', (event) => {
   
   event.notification.close();
 
-  if (event.action === 'explore') {
-    // Open the app to a specific page
+  if (event.action === 'view' || !event.action) {
+    const urlToOpen = event.notification.data?.url || '/dashboard';
     event.waitUntil(
-      clients.openWindow('/dashboard')
-    );
-  } else if (event.action === 'close') {
-    // Just close the notification
-    return;
-  } else {
-    // Default action - open the app
-    event.waitUntil(
-      clients.openWindow('/')
+      clients.matchAll({ type: 'window', includeUncontrolled: true })
+        .then((clientList) => {
+          // Try to focus existing window first
+          for (const client of clientList) {
+            if (client.url.includes(self.location.origin)) {
+              return client.focus().then(() => client.navigate(urlToOpen));
+            }
+          }
+          // Open new window if no existing window found
+          return clients.openWindow(urlToOpen);
+        })
     );
   }
 });
@@ -291,12 +344,20 @@ self.addEventListener('message', (event) => {
     self.skipWaiting();
   }
   
-  if (event.data && event.data.type === 'CACHE_URLS') {
+  // Removed aggressive caching for online-first approach
+  if (event.data && event.data.type === 'CLEAR_CACHE') {
     event.waitUntil(
-      caches.open(DYNAMIC_CACHE_NAME)
-        .then((cache) => cache.addAll(event.data.payload))
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cacheName) => {
+            if (cacheName.startsWith('video-task-manager-')) {
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      })
     );
   }
 });
 
-console.log('Service Worker: Loaded');
+console.log('Service Worker: Loaded for online-first operation');

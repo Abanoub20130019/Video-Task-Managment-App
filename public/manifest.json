@@ -1,12 +1,12 @@
 {
   "name": "Video Task Manager",
   "short_name": "VideoTask",
-  "description": "Comprehensive task management system for video shooting projects",
+  "description": "Online task management system for video shooting projects",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#6366f1",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "scope": "/",
   "lang": "en",
   "categories": ["productivity", "business", "utilities"],
@@ -132,6 +132,12 @@
     "preferred_width": 400
   },
   "launch_handler": {
-    "client_mode": "navigate-existing"
-  }
+    "client_mode": "focus-existing"
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+videotask",
+      "url": "/dashboard?task=%s"
+    }
+  ]
 }
