@@ -222,15 +222,15 @@ export default function InteractiveGanttChart({
 
       // Add drag behavior for task rescheduling
       const drag = d3.drag()
-        .on('start', function(event, d) {
+        .on('start', function(event: any, d: any) {
           setIsDragging(true);
           d3.select(this).style('opacity', 0.7);
         })
-        .on('drag', function(event, d) {
+        .on('drag', function(event: any, d: any) {
           const newX = Math.max(0, Math.min(width - 20, event.x));
           d3.select(this).attr('x', newX);
         })
-        .on('end', function(event, d) {
+        .on('end', function(event: any, d: any) {
           setIsDragging(false);
           d3.select(this).style('opacity', 1);
           
@@ -238,17 +238,18 @@ export default function InteractiveGanttChart({
           const newStartDate = xScale.invert(newX);
           
           // Calculate new due date maintaining duration
-          const originalStart = d.startDate ? new Date(d.startDate) : new Date(d.dueDate);
-          const originalEnd = new Date(d.dueDate);
+          const task = d as Task;
+          const originalStart = task.startDate ? new Date(task.startDate) : new Date(task.dueDate);
+          const originalEnd = new Date(task.dueDate);
           const duration = originalEnd.getTime() - originalStart.getTime();
           const newDueDate = new Date(newStartDate.getTime() + duration);
           
           if (onTaskUpdate) {
-            onTaskUpdate(d._id, {
+            onTaskUpdate(task._id, {
               startDate: newStartDate.toISOString(),
               dueDate: newDueDate.toISOString(),
             });
-            showSuccess(`Task "${d.title}" rescheduled`);
+            showSuccess(`Task "${task.title}" rescheduled`);
           }
         });
 
