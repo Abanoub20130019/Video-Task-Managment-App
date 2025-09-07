@@ -7,6 +7,15 @@ import User from '@/models/User';
 import { authOptions } from '@/lib/auth';
 import { projectQuerySchema, createProjectSchema, validateRequestData, validateQueryParams } from '@/lib/zodSchemas';
 
+// Ensure models are registered by importing them
+// This prevents the MissingSchemaError during populate operations
+const ensureModelsRegistered = () => {
+  // Force model registration by accessing the models
+  Client;
+  User;
+  Project;
+};
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -31,6 +40,9 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     await dbConnect();
+    
+    // Ensure all models are registered before populate operations
+    ensureModelsRegistered();
 
     let query: any = {};
     if (status) {
@@ -133,6 +145,9 @@ export async function POST(request: NextRequest) {
     const { name, description, clientId, projectManagerId, budget, startDate, endDate, status } = validation.data as any;
 
     await dbConnect();
+    
+    // Ensure all models are registered before database operations
+    ensureModelsRegistered();
 
     const project = await (Project as any).create({
       name,

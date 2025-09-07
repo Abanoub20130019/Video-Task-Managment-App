@@ -109,7 +109,7 @@ export const updateBudgetSchema = createBudgetSchema.partial();
 // Pagination and query validation schemas
 export const paginationSchema = z.object({
   page: z.string().optional().default('1').transform(val => parseInt(val)).refine(n => n >= 1, 'Page must be at least 1'),
-  limit: z.string().optional().default('20').transform(val => parseInt(val)).refine(n => n >= 1 && n <= 100, 'Limit must be between 1 and 100'),
+  limit: z.string().optional().default('20').transform(val => parseInt(val)).refine(n => n >= 1 && n <= 10000, 'Limit must be between 1 and 10000'),
   search: z.string().max(200, 'Search term too long').optional(),
 });
 
