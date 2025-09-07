@@ -220,7 +220,7 @@ export async function POST(request: NextRequest) {
     const tasks = await Task.find(query)
       .populate('assignedTo', 'name role')
       .populate('projectId', 'name status budget endDate')
-      .lean() as TaskPriorityData[];
+      .lean() as unknown as TaskPriorityData[];
 
     if (tasks.length === 0) {
       return NextResponse.json({
