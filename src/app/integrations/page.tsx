@@ -99,7 +99,10 @@ export default function IntegrationsPage() {
       if (type === 'slack') {
         const slack = integrationManager.getSlack();
         if (slack) {
-          await slack.sendMessage('🧪 *Integration Test*\nThis is a test message from VideoTask Manager!');
+          await slack.sendMessage(
+            settings.slack.channel || '#general',
+            '🧪 *Integration Test*\nThis is a test message from VideoTask Manager!'
+          );
           alert('Test message sent to Slack!');
         }
       } else if (type === 'google') {

@@ -564,7 +564,7 @@ export class IntegrationManager {
 
     if (this.slack) {
       try {
-        await this.slack.sendMessage('🔗 Integration test - VideoTask Manager connected successfully!');
+        await this.slack.sendMessage('#general', '🔗 Integration test - VideoTask Manager connected successfully!');
         results.slack = true;
       } catch (error) {
         console.error('Slack test failed:', error);
