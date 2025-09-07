@@ -11,8 +11,6 @@ interface ApiTask {
 import Link from 'next/link';
 import Notifications from '@/components/Notifications';
 import { showError, showSuccess, showLoading, dismissToast } from '@/lib/toast';
-import { CacheService, CacheKeys, CacheTTL } from '@/lib/redis';
-import { apiLogger } from '@/lib/logger';
 
 interface DashboardStats {
   totalProjects: number;
@@ -46,29 +44,9 @@ export default function Dashboard() {
 
   const fetchDashboardStats = async () => {
     const loadingToast = showLoading('Loading dashboard data...');
-    const startTime = Date.now();
     
     try {
       setLoading(true);
-      apiLogger.info('Fetching dashboard stats', { userId: session?.user?.id });
-
-      // Try to get cached dashboard stats first
-      const cacheKey = CacheKeys.dashboardStats(session?.user?.id);
-      const cachedStats = await CacheService.get<DashboardStats>(cacheKey);
-      
-      if (cachedStats) {
-        apiLogger.info('Dashboard stats loaded from cache', {
-          cacheKey,
-          duration: Date.now() - startTime
-        });
-        setStats(cachedStats);
-        dismissToast(loadingToast);
-        showSuccess('Dashboard data loaded from cache!');
-        return;
-      }
-
-      // If not cached, fetch from API
-      apiLogger.info('Cache miss, fetching dashboard stats from API');
 
       // Fetch projects count - use limit=1 to get just the count efficiently
       const projectsResponse = await fetch('/api/projects?limit=1');
@@ -121,26 +99,13 @@ export default function Dashboard() {
         teamMembers: usersData.pagination?.totalItems || 0,
       };
 
-      // Cache the results
-      await CacheService.set(cacheKey, dashboardStats, CacheTTL.DASHBOARD_STATS);
-      
       setStats(dashboardStats);
-
-      const duration = Date.now() - startTime;
-      apiLogger.info('Dashboard stats fetched and cached', {
-        duration,
-        stats: dashboardStats
-      });
 
       dismissToast(loadingToast);
       showSuccess('Dashboard data loaded successfully!');
     } catch (error) {
       dismissToast(loadingToast);
       const errorMessage = error instanceof Error ? error.message : 'Failed to load dashboard data';
-      apiLogger.error('Failed to fetch dashboard stats', error, {
-        userId: session?.user?.id,
-        duration: Date.now() - startTime
-      });
       showError(errorMessage);
       
       // Set default values on error
