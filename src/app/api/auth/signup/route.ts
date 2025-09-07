@@ -42,18 +42,19 @@ export async function POST(request: NextRequest) {
       // Validate input using Zod schema
       const validation = validateRequestData(createUserSchema, requestData);
       if (!validation.success) {
+        const errors = 'errors' in validation ? validation.errors : ['Validation failed'];
         authLogger.warn('Signup validation failed', {
-          errors: validation.errors,
+          errors,
           email: requestData.email,
           ip
         });
         return NextResponse.json(
-          { error: 'Invalid user data', details: validation.errors },
+          { error: 'Invalid user data', details: errors },
           { status: 400 }
         );
       }
 
-      const { name, email, password, role } = validation.data;
+      const { name, email, password, role } = validation.success ? validation.data : { name: '', email: '', password: '', role: 'crew_member' };
 
       await dbConnect();
 
