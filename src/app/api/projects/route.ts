@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     const totalProjects = await Project.countDocuments(query);
     const totalPages = Math.ceil(totalProjects / limit);
 
-    const projects = await Project.find(query)
+    const projects = await (Project as any).find(query)
       .populate('clientId', 'name email')
       .populate('projectManagerId', 'name email')
       .sort({ createdAt: -1 })
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
 
     await dbConnect();
 
-    const project = await Project.create({
+    const project = await (Project as any).create({
       name,
       description,
       clientId,
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
       status,
     });
 
-    const populatedProject = await Project.findById(project._id)
+    const populatedProject = await (Project as any).findById(project._id)
       .populate('clientId', 'name email')
       .populate('projectManagerId', 'name email');
 

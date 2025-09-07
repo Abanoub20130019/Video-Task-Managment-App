@@ -17,12 +17,12 @@ export async function GET(request: NextRequest) {
 
     await dbConnect();
 
-    let query = {};
+    let query: any = {};
     if (projectId) {
       query = { projectId };
     }
 
-    const allocations = await ResourceAllocation.find(query)
+    const allocations = await (ResourceAllocation as any).find(query)
       .populate('projectId', 'name')
       .populate('scheduleId', 'title')
       .populate('equipmentId', 'name type')
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     await dbConnect();
 
-    const allocation = await ResourceAllocation.create({
+    const allocation = await (ResourceAllocation as any).create({
       projectId,
       scheduleId,
       equipmentId,
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       notes,
     });
 
-    const populatedAllocation = await ResourceAllocation.findById(allocation._id)
+    const populatedAllocation = await (ResourceAllocation as any).findById(allocation._id)
       .populate('projectId', 'name')
       .populate('scheduleId', 'title')
       .populate('equipmentId', 'name type')
