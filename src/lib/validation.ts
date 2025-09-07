@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
 
+// Type definitions
+interface ValidationData {
+  [key: string]: any;
+}
+
 // Input sanitization
 export function sanitizeInput(input: string): string {
   if (typeof input !== 'string') return '';
