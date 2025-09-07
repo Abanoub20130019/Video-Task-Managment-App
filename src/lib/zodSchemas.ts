@@ -106,8 +106,8 @@ export const updateBudgetSchema = createBudgetSchema.partial();
 
 // Pagination and query validation schemas
 export const paginationSchema = z.object({
-  page: z.string().regex(/^\d+$/, 'Page must be a number').transform(Number).refine(n => n >= 1, 'Page must be at least 1').default('1'),
-  limit: z.string().regex(/^\d+$/, 'Limit must be a number').transform(Number).refine(n => n >= 1 && n <= 100, 'Limit must be between 1 and 100').default('20'),
+  page: z.string().optional().default('1').transform(val => parseInt(val)).refine(n => n >= 1, 'Page must be at least 1'),
+  limit: z.string().optional().default('20').transform(val => parseInt(val)).refine(n => n >= 1 && n <= 100, 'Limit must be between 1 and 100'),
   search: z.string().max(200, 'Search term too long').optional(),
 });
 
@@ -135,7 +135,7 @@ export function validateRequestData<T>(schema: z.ZodSchema<T>, data: unknown): {
     return { success: true, data: validatedData };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const errors = error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
+      const errors = error.errors.map((err: any) => `${err.path.join('.')}: ${err.message}`);
       return { success: false, errors };
     }
     return { success: false, errors: ['Validation failed'] };
@@ -143,7 +143,7 @@ export function validateRequestData<T>(schema: z.ZodSchema<T>, data: unknown): {
 }
 
 // Helper function to validate query parameters
-export function validateQueryParams<T>(schema: z.ZodSchema<T>, searchParams: URLSearchParams): { success: true; data: T } | { success: false; errors: string[] } {
+export function validateQueryParams(schema: any, searchParams: URLSearchParams): { success: true; data: any } | { success: false; errors: string[] } {
   const queryObject: Record<string, string> = {};
   searchParams.forEach((value, key) => {
     queryObject[key] = value;

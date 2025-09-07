@@ -43,15 +43,6 @@ const nextConfig: NextConfig = {
     }
     return config;
   },
-  experimental: {
-    serverComponentsExternalPackages: [
-      'mongoose',
-      'ioredis',
-      'pino',
-      'pusher',
-      'firebase-admin'
-    ],
-  },
 };
 
 export default nextConfig;
