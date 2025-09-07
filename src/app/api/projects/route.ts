@@ -5,7 +5,7 @@ import Project from '@/models/Project';
 import { authOptions } from '@/lib/auth';
 import { validateProjectData, createErrorResponse, sanitizeObject } from '@/lib/validation';
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
@@ -30,7 +30,7 @@ export async function GET(_request: NextRequest) {
   }
 }
 
-export async function POST(_request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
