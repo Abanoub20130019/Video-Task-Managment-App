@@ -423,11 +423,9 @@ export function EnhancedSearchAndFilter({
             </div>
           </div>
         </div>
-      </div>
-    );
-  }
-
-  return null;
+      )}
+    </div>
+  );
 }
 
 // Hook for keyboard shortcuts
