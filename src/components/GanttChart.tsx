@@ -26,7 +26,7 @@ export default function GanttChart({ tasks, projectStartDate, projectEndDate }: 
   const [showTable, setShowTable] = useState(false);
 
   useEffect(() => {
-    if (!canvasRef.current || tasks.length === 0) return;
+    if (!canvasRef.current || tasks.length === 0 || !projectStartDate || !projectEndDate) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -97,7 +97,7 @@ export default function GanttChart({ tasks, projectStartDate, projectEndDate }: 
       // Draw assignee
       ctx.fillStyle = '#6B7280';
       ctx.font = '10px Arial';
-      ctx.fillText(task.assignedTo.name, barX + 5, y + 3);
+      ctx.fillText(task.assignedTo?.name || 'Unassigned', barX + 5, y + 3);
     });
 
     // Draw timeline
@@ -180,7 +180,7 @@ export default function GanttChart({ tasks, projectStartDate, projectEndDate }: 
                   {task.title}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {task.assignedTo.name}
+                  {task.assignedTo?.name || 'Unassigned'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusColors[task.status as keyof typeof statusColors]}`}>
@@ -262,7 +262,7 @@ export default function GanttChart({ tasks, projectStartDate, projectEndDate }: 
                 return (
                   <li key={task._id}>
                     {task.title}: {task.status} priority {task.priority},
-                    assigned to {task.assignedTo.name},
+                    assigned to {task.assignedTo?.name || 'Unassigned'},
                     from {taskStart.toLocaleDateString()} to {taskEnd.toLocaleDateString()}
                   </li>
                 );

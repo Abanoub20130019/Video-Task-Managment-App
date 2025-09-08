@@ -70,9 +70,13 @@ export default function ProjectDetails() {
       if (response.ok) {
         const data = await response.json();
         setProject(data);
+      } else {
+        console.error('Failed to fetch project:', response.status);
+        setProject(null);
       }
     } catch (error) {
       console.error('Error fetching project:', error);
+      setProject(null);
     }
   };
 
@@ -81,10 +85,14 @@ export default function ProjectDetails() {
       const response = await fetch(`/api/tasks?projectId=${params.id}`);
       if (response.ok) {
         const data = await response.json();
-        setTasks(data);
+        setTasks(Array.isArray(data) ? data : []);
+      } else {
+        console.error('Failed to fetch tasks:', response.status);
+        setTasks([]);
       }
     } catch (error) {
       console.error('Error fetching tasks:', error);
+      setTasks([]);
     } finally {
       setLoading(false);
     }
@@ -130,8 +138,25 @@ export default function ProjectDetails() {
     );
   }
 
-  if (!session || !project) {
+  if (!session) {
     return null;
+  }
+
+  if (!project) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Project Not Found</h1>
+          <p className="text-gray-600 mb-4">The project you're looking for doesn't exist or you don't have access to it.</p>
+          <Link
+            href="/projects"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+          >
+            Back to Projects
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -147,13 +172,13 @@ export default function ProjectDetails() {
               <p className="mt-1 text-sm text-gray-500">{project.description}</p>
               <div className="mt-2 flex items-center space-x-4">
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}>
-                  {project.status.replace('_', ' ')}
+                  {project.status?.replace('_', ' ') || 'Unknown'}
                 </span>
                 <span className="text-sm text-gray-500">
-                  Client: {project.clientId.name}
+                  Client: {project.clientId?.name || 'Unknown'}
                 </span>
                 <span className="text-sm text-gray-500">
-                  Manager: {project.projectManagerId.name}
+                  Manager: {project.projectManagerId?.name || 'Unknown'}
                 </span>
               </div>
             </div>
@@ -171,24 +196,24 @@ export default function ProjectDetails() {
             <div>
               <dt className="text-sm font-medium text-gray-500">Start Date</dt>
               <dd className="mt-1 text-sm text-gray-900">
-                {new Date(project.startDate).toLocaleDateString()}
+                {project.startDate ? new Date(project.startDate).toLocaleDateString() : 'Not set'}
               </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">End Date</dt>
               <dd className="mt-1 text-sm text-gray-900">
-                {new Date(project.endDate).toLocaleDateString()}
+                {project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Not set'}
               </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Budget</dt>
               <dd className="mt-1 text-sm text-gray-900">
-                ${project.budget.toLocaleString()}
+                ${project.budget ? project.budget.toLocaleString() : '0'}
               </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Progress</dt>
-              <dd className="mt-1 text-sm text-gray-900">{project.progress}%</dd>
+              <dd className="mt-1 text-sm text-gray-900">{project.progress || 0}%</dd>
             </div>
           </div>
         </div>
@@ -309,13 +334,15 @@ export default function ProjectDetails() {
         </div>
 
         {/* Gantt Chart */}
-        <div className="mt-8">
-          <GanttChart
-            tasks={tasks}
-            projectStartDate={project.startDate}
-            projectEndDate={project.endDate}
-          />
-        </div>
+        {project.startDate && project.endDate && (
+          <div className="mt-8">
+            <GanttChart
+              tasks={tasks}
+              projectStartDate={project.startDate}
+              projectEndDate={project.endDate}
+            />
+          </div>
+        )}
 
         {/* Comments Section */}
         <div className="mt-8">
