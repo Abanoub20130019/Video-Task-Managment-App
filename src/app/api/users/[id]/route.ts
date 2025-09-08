@@ -26,22 +26,23 @@ const updateUserSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Users can only access their own profile unless they're admin
-    if (session.user.id !== params.id && session.user.role !== 'admin') {
+    if (session.user.id !== id && session.user.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     await dbConnect();
 
-    const user = await User.findById(params.id).select('-password');
+    const user = await User.findById(id).select('-password');
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
@@ -64,16 +65,17 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Users can only update their own profile unless they're admin
-    if (session.user.id !== params.id && session.user.role !== 'admin') {
+    if (session.user.id !== id && session.user.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -82,7 +84,7 @@ export async function PUT(
 
     await dbConnect();
 
-    const user = await User.findById(params.id);
+    const user = await User.findById(id);
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
@@ -124,7 +126,7 @@ export async function PUT(
     await user.save();
 
     // Return user without password
-    const updatedUser = await User.findById(params.id).select('-password');
+    const updatedUser = await User.findById(id).select('-password');
     const userWithJoinedDate = {
       ...updatedUser!.toObject(),
       joinedDate: updatedUser!.createdAt,
@@ -149,22 +151,23 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Only admins can delete users, or users can delete their own account
-    if (session.user.role !== 'admin' && session.user.id !== params.id) {
+    if (session.user.role !== 'admin' && session.user.id !== id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     await dbConnect();
 
-    const user = await User.findById(params.id);
+    const user = await User.findById(id);
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
@@ -180,7 +183,7 @@ export async function DELETE(
       }
     }
 
-    await User.findByIdAndDelete(params.id);
+    await User.findByIdAndDelete(id);
 
     return NextResponse.json({ message: 'User deleted successfully' });
   } catch (error) {
