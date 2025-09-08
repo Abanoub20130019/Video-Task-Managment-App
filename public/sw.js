@@ -23,7 +23,6 @@ const CACHEABLE_API_ROUTES = [
   '/api/users',
   '/api/clients',
   '/api/equipment',
-  '/api/notifications',
 ];
 
 // Offline-capable routes for task creation
@@ -488,69 +487,7 @@ async function removeOfflineAction(actionId) {
   });
 }
 
-// Push notification handling (optimized for online use)
-self.addEventListener('push', (event) => {
-  console.log('Service Worker: Push notification received', event);
-  
-  let notificationData;
-  try {
-    notificationData = event.data ? event.data.json() : {};
-  } catch (e) {
-    notificationData = { body: event.data ? event.data.text() : 'New notification' };
-  }
-  
-  const options = {
-    body: notificationData.body || 'New notification from Video Task Manager',
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/badge-72x72.png',
-    data: {
-      url: notificationData.url || '/dashboard',
-      timestamp: Date.now()
-    },
-    requireInteraction: false, // Don't require interaction for online use
-    actions: [
-      {
-        action: 'view',
-        title: 'View'
-      },
-      {
-        action: 'dismiss',
-        title: 'Dismiss'
-      }
-    ]
-  };
-
-  event.waitUntil(
-    self.registration.showNotification(
-      notificationData.title || 'Video Task Manager',
-      options
-    )
-  );
-});
-
-// Notification click handling
-self.addEventListener('notificationclick', (event) => {
-  console.log('Service Worker: Notification clicked', event);
-  
-  event.notification.close();
-
-  if (event.action === 'view' || !event.action) {
-    const urlToOpen = event.notification.data?.url || '/dashboard';
-    event.waitUntil(
-      clients.matchAll({ type: 'window', includeUncontrolled: true })
-        .then((clientList) => {
-          // Try to focus existing window first
-          for (const client of clientList) {
-            if (client.url.includes(self.location.origin)) {
-              return client.focus().then(() => client.navigate(urlToOpen));
-            }
-          }
-          // Open new window if no existing window found
-          return clients.openWindow(urlToOpen);
-        })
-    );
-  }
-});
+// Push notifications removed as requested
 
 // Message handling from main thread
 self.addEventListener('message', (event) => {

@@ -19,8 +19,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { socket_id, channel_name } = body;
+    // Handle both JSON and form-encoded data
+    let socket_id: string;
+    let channel_name: string;
+
+    const contentType = request.headers.get('content-type');
+    
+    if (contentType?.includes('application/json')) {
+      const body = await request.json();
+      socket_id = body.socket_id;
+      channel_name = body.channel_name;
+    } else {
+      // Handle form-encoded data
+      const formData = await request.formData();
+      socket_id = formData.get('socket_id') as string;
+      channel_name = formData.get('channel_name') as string;
+    }
+
+    if (!socket_id || !channel_name) {
+      return NextResponse.json({ error: 'Missing socket_id or channel_name' }, { status: 400 });
+    }
 
     // Use type assertion to access the method that exists but isn't in types
     const pusherAny = pusher as any;

@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -31,6 +32,7 @@ export default function Calendar() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [formData, setFormData] = useState({
     projectId: '',
     title: '',
@@ -111,6 +113,32 @@ export default function Calendar() {
     }
   };
 
+  // Calendar navigation functions
+  const goToPreviousMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+  };
+
+  const goToNextMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+  };
+
+  const goToToday = () => {
+    setCurrentDate(new Date());
+  };
+
+  // Get calendar display info
+  const getMonthName = (date: Date) => {
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
+
+  const getDaysInMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  };
+
   const _events = schedules.map(schedule => ({
     id: schedule._id,
     title: `${schedule.title} - ${schedule.projectId.name}`,
@@ -148,21 +176,21 @@ export default function Calendar() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="py-8">
-          <div className="md:flex md:items-center md:justify-between">
+        <div className="py-4 sm:py-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="min-w-0 flex-1">
-              <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+              <h2 className="text-xl sm:text-2xl font-bold leading-7 text-gray-900 sm:truncate lg:text-3xl sm:tracking-tight">
                 Calendar
               </h2>
               <p className="mt-1 text-sm text-gray-500">
                 Schedule and manage your shooting sessions
               </p>
             </div>
-            <div className="mt-4 flex md:mt-0 md:ml-4">
+            <div className="flex-shrink-0">
               <button
                 type="button"
                 onClick={() => setShowAddModal(true)}
-                className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                className="w-full sm:w-auto inline-flex items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-colors"
               >
                 Add Schedule
               </button>
@@ -170,48 +198,76 @@ export default function Calendar() {
           </div>
         </div>
 
-        <div className="bg-white shadow rounded-lg p-6">
+        <div className="bg-white shadow rounded-lg p-4 sm:p-6">
           <div className="calendar-container">
-            <div className="mb-4 flex justify-between items-center">
-              <h3 className="text-lg font-medium text-gray-900">October 2024</h3>
+            <div className="mb-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+              <h3 className="text-lg font-medium text-gray-900">{getMonthName(currentDate)}</h3>
               <div className="flex space-x-2">
-                <button className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded">Previous</button>
-                <button className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded">Next</button>
-                <button className="px-3 py-1 text-sm bg-indigo-600 text-white hover:bg-indigo-700 rounded">Today</button>
+                <button
+                  onClick={goToPreviousMonth}
+                  className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={goToNextMonth}
+                  className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                >
+                  Next
+                </button>
+                <button
+                  onClick={goToToday}
+                  className="px-3 py-1 text-sm bg-indigo-600 text-white hover:bg-indigo-700 rounded transition-colors"
+                >
+                  Today
+                </button>
               </div>
             </div>
 
-            {/* Simple calendar grid */}
+            {/* Calendar header */}
             <div className="grid grid-cols-7 gap-1 mb-4">
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                <div key={day} className="p-2 text-center text-sm font-medium text-gray-500 bg-gray-50">
+                <div key={day} className="p-2 text-center text-xs sm:text-sm font-medium text-gray-500 bg-gray-50">
                   {day}
                 </div>
               ))}
             </div>
 
+            {/* Calendar grid */}
             <div className="grid grid-cols-7 gap-1">
-              {/* Generate calendar days - simplified for demo */}
-              {Array.from({ length: 35 }, (_, i) => {
-                const dayNumber = i - 3; // Start from October 1st
-                const isCurrentMonth = dayNumber >= 1 && dayNumber <= 31;
-                const hasEvents = schedules.some(schedule =>
-                  new Date(schedule.startDate).getDate() === dayNumber &&
-                  new Date(schedule.startDate).getMonth() === 9 // October
-                );
+              {Array.from({ length: 42 }, (_, i) => {
+                const firstDay = getFirstDayOfMonth(currentDate);
+                const daysInMonth = getDaysInMonth(currentDate);
+                const dayNumber = i - firstDay + 1;
+                const isCurrentMonth = dayNumber >= 1 && dayNumber <= daysInMonth;
+                const isToday = isCurrentMonth &&
+                  dayNumber === new Date().getDate() &&
+                  currentDate.getMonth() === new Date().getMonth() &&
+                  currentDate.getFullYear() === new Date().getFullYear();
+                
+                const hasEvents = isCurrentMonth && schedules.some(schedule => {
+                  const scheduleDate = new Date(schedule.startDate);
+                  return scheduleDate.getDate() === dayNumber &&
+                    scheduleDate.getMonth() === currentDate.getMonth() &&
+                    scheduleDate.getFullYear() === currentDate.getFullYear();
+                });
 
                 return (
                   <div
                     key={i}
-                    className={`min-h-[80px] p-2 border border-gray-200 ${
+                    className={`min-h-[60px] sm:min-h-[80px] p-1 sm:p-2 border border-gray-200 ${
                       isCurrentMonth ? 'bg-white' : 'bg-gray-50 text-gray-400'
-                    } ${hasEvents ? 'bg-blue-50 border-blue-200' : ''}`}
+                    } ${hasEvents ? 'bg-blue-50 border-blue-200' : ''} ${
+                      isToday ? 'bg-indigo-50 border-indigo-300' : ''
+                    }`}
                   >
-                    <div className="text-sm font-medium mb-1">
+                    <div className={`text-xs sm:text-sm font-medium mb-1 ${
+                      isToday ? 'text-indigo-600' : ''
+                    }`}>
                       {isCurrentMonth ? dayNumber : ''}
                     </div>
                     {hasEvents && (
-                      <div className="text-xs bg-blue-100 text-blue-800 rounded px-1 py-0.5 mb-1">
+                      <div className="text-xs bg-blue-100 text-blue-800 rounded px-1 py-0.5 mb-1 truncate">
                         Event
                       </div>
                     )}
@@ -261,8 +317,8 @@ export default function Calendar() {
 
       {/* Add Schedule Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-4">
+          <div className="relative top-4 sm:top-20 mx-auto p-4 sm:p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
             <div className="mt-3">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Add New Schedule</h3>
               <form onSubmit={handleAddSchedule} className="space-y-4">

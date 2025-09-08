@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { showInfo, showSuccess, showError } from '@/lib/toast';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -20,7 +19,6 @@ export default function PWAInstaller() {
         .register('/sw.js')
         .then((registration) => {
           console.log('Service Worker registered successfully:', registration);
-          showSuccess('App enhanced with PWA features!');
           
           // Check for updates
           registration.addEventListener('updatefound', () => {
@@ -28,7 +26,7 @@ export default function PWAInstaller() {
             if (newWorker) {
               newWorker.addEventListener('statechange', () => {
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  showInfo('New version available! Refresh to update.');
+                  console.log('New version available! Refresh to update.');
                 }
               });
             }
@@ -36,7 +34,6 @@ export default function PWAInstaller() {
         })
         .catch((error) => {
           console.error('Service Worker registration failed:', error);
-          showError('Failed to enable PWA features');
         });
     }
 
@@ -52,14 +49,23 @@ export default function PWAInstaller() {
       setIsInstalled(true);
       setIsInstallable(false);
       setDeferredPrompt(null);
-      showSuccess('App installed successfully!');
+      console.log('App installed successfully!');
     };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    window.addEventListener('appinstalled', handleAppInstalled);
+    // iOS Safari specific handling
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches;
+    
+    if (isIOS && !isInStandaloneMode) {
+      // For iOS, we can't use beforeinstallprompt, so show install instructions
+      setIsInstallable(true);
+    } else {
+      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.addEventListener('appinstalled', handleAppInstalled);
+    }
 
     // Check if running in standalone mode (already installed)
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    if (isInStandaloneMode) {
       setIsInstalled(true);
     }
 
@@ -70,6 +76,14 @@ export default function PWAInstaller() {
   }, []);
 
   const handleInstallClick = async () => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    
+    if (isIOS) {
+      // Show iOS installation instructions
+      alert('To install this app on iOS:\n1. Tap the Share button\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add" to confirm');
+      return;
+    }
+
     if (!deferredPrompt) return;
 
     try {
@@ -77,16 +91,15 @@ export default function PWAInstaller() {
       const { outcome } = await deferredPrompt.userChoice;
       
       if (outcome === 'accepted') {
-        showSuccess('Installing app...');
+        console.log('Installing app...');
       } else {
-        showInfo('Installation cancelled');
+        console.log('Installation cancelled');
       }
       
       setDeferredPrompt(null);
       setIsInstallable(false);
     } catch (error) {
       console.error('Error during app installation:', error);
-      showError('Failed to install app');
     }
   };
 
@@ -95,6 +108,8 @@ export default function PWAInstaller() {
     return null;
   }
 
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  
   return (
     <div className="fixed bottom-4 right-4 z-50">
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700 p-4 max-w-sm">
@@ -109,14 +124,17 @@ export default function PWAInstaller() {
               Install Video Task Manager
             </h4>
             <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-              Install the app for quick access and enhanced performance
+              {isIOS
+                ? "Add to Home Screen for the best experience"
+                : "Install the app for quick access and enhanced performance"
+              }
             </p>
             <div className="flex space-x-2 mt-3">
               <button
                 onClick={handleInstallClick}
                 className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
               >
-                Install
+                {isIOS ? "Instructions" : "Install"}
               </button>
               <button
                 onClick={() => {
@@ -159,28 +177,8 @@ export function usePWA() {
     };
   }, []);
 
-  const requestNotificationPermission = async () => {
-    if ('Notification' in window) {
-      const permission = await Notification.requestPermission();
-      return permission === 'granted';
-    }
-    return false;
-  };
-
-  const showNotification = (title: string, options?: NotificationOptions) => {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      return new Notification(title, {
-        icon: '/icons/icon-192x192.png',
-        badge: '/icons/badge-72x72.png',
-        ...options,
-      });
-    }
-  };
-
   return {
     isOnline,
     isInstalled,
-    requestNotificationPermission,
-    showNotification,
   };
 }
