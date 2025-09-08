@@ -11,27 +11,13 @@ const comparePassword = async (password: string, hash: string): Promise<boolean>
     const salt = Buffer.from(saltHex, 'hex');
     const key = Buffer.from(keyHex, 'hex');
     
-    console.log('Password comparison debug:', {
-      password,
-      saltHex: saltHex.substring(0, 10) + '...',
-      keyHex: keyHex.substring(0, 10) + '...',
-      saltLength: salt.length,
-      keyLength: key.length
-    });
-    
     crypto.scrypt(password, salt, 64, { N: 1024 }, (err, derivedKey) => {
       if (err) {
-        console.error('Scrypt error:', err);
         reject(err);
         return;
       }
       
-      console.log('Derived key length:', derivedKey.length);
-      console.log('Original key length:', key.length);
-      
       const isEqual = crypto.timingSafeEqual(key, derivedKey);
-      console.log('Password comparison result:', isEqual);
-      
       resolve(isEqual);
     });
   });

@@ -6,6 +6,27 @@ export interface IUser extends Document {
   password: string;
   role: 'admin' | 'project_manager' | 'crew_member';
   avatar?: string;
+  bio?: string;
+  phone?: string;
+  location?: string;
+  timezone?: string;
+  skills?: string[];
+  department?: string;
+  lastActive?: Date;
+  preferences?: {
+    notifications: {
+      email: boolean;
+      push: boolean;
+      digest: boolean;
+    };
+    theme: 'light' | 'dark' | 'system';
+    language: string;
+  };
+  stats?: {
+    projectsCompleted: number;
+    tasksCompleted: number;
+    hoursLogged: number;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -34,6 +55,71 @@ const UserSchema: Schema = new Schema({
   },
   avatar: {
     type: String,
+  },
+  bio: {
+    type: String,
+    maxlength: 500,
+  },
+  phone: {
+    type: String,
+  },
+  location: {
+    type: String,
+  },
+  timezone: {
+    type: String,
+    default: 'UTC',
+  },
+  skills: [{
+    type: String,
+    trim: true,
+  }],
+  department: {
+    type: String,
+    enum: ['production', 'post-production', 'creative', 'technical', 'management'],
+  },
+  lastActive: {
+    type: Date,
+    default: Date.now,
+  },
+  preferences: {
+    notifications: {
+      email: {
+        type: Boolean,
+        default: true,
+      },
+      push: {
+        type: Boolean,
+        default: true,
+      },
+      digest: {
+        type: Boolean,
+        default: false,
+      },
+    },
+    theme: {
+      type: String,
+      enum: ['light', 'dark', 'system'],
+      default: 'system',
+    },
+    language: {
+      type: String,
+      default: 'en',
+    },
+  },
+  stats: {
+    projectsCompleted: {
+      type: Number,
+      default: 0,
+    },
+    tasksCompleted: {
+      type: Number,
+      default: 0,
+    },
+    hoursLogged: {
+      type: Number,
+      default: 0,
+    },
   },
 }, {
   timestamps: true,

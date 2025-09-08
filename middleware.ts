@@ -85,16 +85,27 @@ export function middleware(request: NextRequest) {
   // Referrer policy
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
-  // Content Security Policy (optimized for online deployment)
+  // Content Security Policy (secure configuration)
   response.headers.set('Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://*.vercel.app; " +
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "script-src 'self' https://vercel.live https://*.vercel.app; " +
+    "style-src 'self' https://fonts.googleapis.com; " +
     "img-src 'self' data: https: blob:; " +
     "font-src 'self' https://fonts.gstatic.com; " +
-    "connect-src 'self' https://*.mongodb.net https://*.vercel.app wss://*.pusher.com; " +
-    "frame-ancestors 'none';"
+    "connect-src 'self' https://*.mongodb.net https://*.vercel.app wss://*.pusher.com https://*.pusherapp.com; " +
+    "frame-ancestors 'none'; " +
+    "base-uri 'self'; " +
+    "form-action 'self'; " +
+    "upgrade-insecure-requests;"
   );
+
+  // Additional security headers
+  response.headers.set('X-DNS-Prefetch-Control', 'off');
+  response.headers.set('X-Download-Options', 'noopen');
+  response.headers.set('X-Permitted-Cross-Domain-Policies', 'none');
+  response.headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
+  response.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
+  response.headers.set('Cross-Origin-Resource-Policy', 'same-origin');
 
   // HSTS (HTTP Strict Transport Security) - only in production
   if (process.env.NODE_ENV === 'production') {

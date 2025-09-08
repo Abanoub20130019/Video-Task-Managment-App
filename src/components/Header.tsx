@@ -29,6 +29,8 @@ export default function Header() {
     { name: 'Reports', href: '/reports', icon: '📊' },
     { name: 'Integrations', href: '/integrations', icon: '🔗' },
     { name: 'Equipment', href: '/equipment', icon: '🎥' },
+    { name: 'Profile', href: '/profile', icon: '👤' },
+    { name: 'Demo', href: '/demo', icon: '🚀' },
     { name: 'Clients', href: '/admin/clients', icon: '👥' },
   ];
 

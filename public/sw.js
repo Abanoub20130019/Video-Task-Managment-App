@@ -2,11 +2,18 @@ const CACHE_NAME = 'video-task-manager-v2';
 const STATIC_CACHE_NAME = 'video-task-manager-static-v2';
 const DYNAMIC_CACHE_NAME = 'video-task-manager-dynamic-v2';
 
-// Minimal assets to cache for basic offline functionality
+// Enhanced assets to cache for better offline functionality
 const STATIC_ASSETS = [
+  '/',
+  '/dashboard',
+  '/profile',
+  '/projects',
+  '/calendar',
   '/manifest.json',
   '/next.svg',
   '/vercel.svg',
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png',
 ];
 
 // API routes that can be cached (read-only operations)
@@ -16,6 +23,14 @@ const CACHEABLE_API_ROUTES = [
   '/api/users',
   '/api/clients',
   '/api/equipment',
+  '/api/notifications',
+];
+
+// Offline-capable routes for task creation
+const OFFLINE_CAPABLE_ROUTES = [
+  '/api/tasks',
+  '/api/projects',
+  '/api/comments',
 ];
 
 // Install event - cache minimal static assets
@@ -112,23 +127,35 @@ async function cacheFirstStrategy(request) {
   }
 }
 
-// Online First Strategy for API calls - prioritize fresh data
+// Enhanced API Strategy with offline support
 async function onlineFirstApiStrategy(request) {
+  const url = new URL(request.url);
+  
   try {
     const networkResponse = await fetch(request);
     
     if (networkResponse.ok && CACHEABLE_API_ROUTES.some(route => request.url.includes(route))) {
-      // Only cache successful GET responses for read operations
+      // Cache successful GET responses for read operations
       const cache = await caches.open(DYNAMIC_CACHE_NAME);
       cache.put(request, networkResponse.clone());
+      
+      // Store data in IndexedDB for offline access
+      if (request.method === 'GET') {
+        storeOfflineData(url.pathname, await networkResponse.clone().json());
+      }
     }
     
     return networkResponse;
   } catch (error) {
-    console.log('Network unavailable, checking cache:', error);
+    console.log('Network unavailable, checking offline capabilities:', error);
     
-    // Only return cached data for read operations
-    if (CACHEABLE_API_ROUTES.some(route => request.url.includes(route))) {
+    // Handle offline POST/PUT requests for task creation
+    if (request.method !== 'GET' && OFFLINE_CAPABLE_ROUTES.some(route => request.url.includes(route))) {
+      return handleOfflineWrite(request);
+    }
+    
+    // Return cached data for read operations
+    if (request.method === 'GET' && CACHEABLE_API_ROUTES.some(route => request.url.includes(route))) {
       const cachedResponse = await caches.match(request);
       if (cachedResponse) {
         const response = cachedResponse.clone();
@@ -136,21 +163,178 @@ async function onlineFirstApiStrategy(request) {
         response.headers.set('X-Cache-Warning', 'Stale data - network unavailable');
         return response;
       }
+      
+      // Try to get data from IndexedDB
+      const offlineData = await getOfflineData(url.pathname);
+      if (offlineData) {
+        return new Response(JSON.stringify(offlineData), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Served-From': 'offline-storage',
+            'X-Cache-Warning': 'Offline data - may be stale'
+          }
+        });
+      }
     }
 
-    // Return network error for non-cacheable requests
+    // Return appropriate offline response
+    return getOfflineResponse(request);
+  }
+}
+
+// Handle offline write operations
+async function handleOfflineWrite(request) {
+  try {
+    const requestData = await request.clone().json();
+    const offlineAction = {
+      id: Date.now().toString(),
+      url: request.url,
+      method: request.method,
+      headers: Object.fromEntries(request.headers.entries()),
+      body: JSON.stringify(requestData),
+      timestamp: Date.now()
+    };
+    
+    // Store in IndexedDB for later sync
+    await storeOfflineAction(offlineAction);
+    
+    // Return optimistic response
     return new Response(JSON.stringify({
-      error: 'Network unavailable',
-      message: 'Please check your internet connection',
-      timestamp: new Date().toISOString()
+      success: true,
+      id: offlineAction.id,
+      message: 'Action queued for sync when online',
+      offline: true,
+      data: requestData
     }), {
-      status: 503,
-      statusText: 'Service Unavailable',
+      status: 202,
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-Offline-Action': 'queued'
       }
     });
+  } catch (error) {
+    return new Response(JSON.stringify({
+      error: 'Failed to queue offline action',
+      message: error.message
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
+}
+
+// Get appropriate offline response
+function getOfflineResponse(request) {
+  const url = new URL(request.url);
+  
+  if (url.pathname.includes('/projects')) {
+    return new Response(JSON.stringify({
+      projects: [],
+      message: 'Offline mode - limited data available',
+      offline: true
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+  
+  if (url.pathname.includes('/tasks')) {
+    return new Response(JSON.stringify({
+      tasks: [],
+      message: 'Offline mode - limited data available',
+      offline: true
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+  
+  return new Response(JSON.stringify({
+    error: 'Network unavailable',
+    message: 'Please check your internet connection',
+    offline: true,
+    timestamp: new Date().toISOString()
+  }), {
+    status: 503,
+    statusText: 'Service Unavailable',
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+
+// IndexedDB operations for offline data
+async function storeOfflineData(endpoint, data) {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('VideoTaskManagerOffline', 1);
+    
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains('apiData')) {
+        db.createObjectStore('apiData', { keyPath: 'endpoint' });
+      }
+      if (!db.objectStoreNames.contains('offlineActions')) {
+        db.createObjectStore('offlineActions', { keyPath: 'id' });
+      }
+    };
+    
+    request.onsuccess = (event) => {
+      const db = event.target.result;
+      const transaction = db.transaction(['apiData'], 'readwrite');
+      const store = transaction.objectStore('apiData');
+      
+      store.put({
+        endpoint: endpoint,
+        data: data,
+        timestamp: Date.now()
+      });
+      
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    };
+    
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function getOfflineData(endpoint) {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('VideoTaskManagerOffline', 1);
+    
+    request.onsuccess = (event) => {
+      const db = event.target.result;
+      const transaction = db.transaction(['apiData'], 'readonly');
+      const store = transaction.objectStore('apiData');
+      const getRequest = store.get(endpoint);
+      
+      getRequest.onsuccess = () => {
+        const result = getRequest.result;
+        resolve(result ? result.data : null);
+      };
+      
+      getRequest.onerror = () => resolve(null);
+    };
+    
+    request.onerror = () => resolve(null);
+  });
+}
+
+async function storeOfflineAction(action) {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('VideoTaskManagerOffline', 1);
+    
+    request.onsuccess = (event) => {
+      const db = event.target.result;
+      const transaction = db.transaction(['offlineActions'], 'readwrite');
+      const store = transaction.objectStore('offlineActions');
+      
+      store.put(action);
+      
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    };
+    
+    request.onerror = () => reject(request.error);
+  });
 }
 
 // Network First Strategy - for pages and resources
@@ -260,16 +444,48 @@ async function syncOfflineActions() {
   }
 }
 
-// Helper functions for offline action management
+// Enhanced offline action management
 async function getOfflineActions() {
-  // In a real implementation, this would read from IndexedDB
-  // For now, return empty array
-  return [];
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('VideoTaskManagerOffline', 1);
+    
+    request.onsuccess = (event) => {
+      const db = event.target.result;
+      const transaction = db.transaction(['offlineActions'], 'readonly');
+      const store = transaction.objectStore('offlineActions');
+      const getAllRequest = store.getAll();
+      
+      getAllRequest.onsuccess = () => {
+        resolve(getAllRequest.result || []);
+      };
+      
+      getAllRequest.onerror = () => resolve([]);
+    };
+    
+    request.onerror = () => resolve([]);
+  });
 }
 
 async function removeOfflineAction(actionId) {
-  // In a real implementation, this would remove from IndexedDB
-  console.log('Service Worker: Removing offline action', actionId);
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('VideoTaskManagerOffline', 1);
+    
+    request.onsuccess = (event) => {
+      const db = event.target.result;
+      const transaction = db.transaction(['offlineActions'], 'readwrite');
+      const store = transaction.objectStore('offlineActions');
+      
+      store.delete(actionId);
+      
+      transaction.oncomplete = () => {
+        console.log('Service Worker: Removed offline action', actionId);
+        resolve();
+      };
+      transaction.onerror = () => reject(transaction.error);
+    };
+    
+    request.onerror = () => reject(request.error);
+  });
 }
 
 // Push notification handling (optimized for online use)

@@ -43,8 +43,6 @@ export default function Dashboard() {
   }, [session]);
 
   const fetchDashboardStats = async () => {
-    const loadingToast = showLoading('Loading dashboard data...');
-    
     try {
       setLoading(true);
 
@@ -117,11 +115,7 @@ export default function Dashboard() {
       };
 
       setStats(dashboardStats);
-
-      dismissToast(loadingToast);
-      showSuccess('Dashboard data loaded successfully!');
     } catch (error) {
-      dismissToast(loadingToast);
       console.error('Dashboard fetch error:', error);
       
       const errorMessage = error instanceof Error ? error.message : 'Failed to load dashboard data';
