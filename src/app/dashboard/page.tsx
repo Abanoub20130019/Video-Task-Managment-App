@@ -29,6 +29,19 @@ export default function Dashboard() {
     teamMembers: 1,
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window || navigator.maxTouchPoints > 0);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -45,6 +58,7 @@ export default function Dashboard() {
   const fetchDashboardStats = async () => {
     try {
       setLoading(true);
+      setError(null);
 
       // Fetch projects count - use limit=1 to get just the count efficiently
       const projectsResponse = await fetch('/api/projects?limit=1');
@@ -119,6 +133,7 @@ export default function Dashboard() {
       console.error('Dashboard fetch error:', error);
       
       const errorMessage = error instanceof Error ? error.message : 'Failed to load dashboard data';
+      setError(errorMessage);
       showError(errorMessage);
       
       // Set default values on error
@@ -149,20 +164,21 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="w-full px-4 sm:px-6 lg:px-8">
-        <div className="py-8">
-          <div className="md:flex md:items-center md:justify-between">
+        <div className="py-4 md:py-8">
+          <div className="space-y-4 md:space-y-0 md:flex md:items-center md:justify-between">
             <div className="min-w-0 flex-1">
-              <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+              <h2 className="text-xl md:text-2xl lg:text-3xl font-bold leading-7 text-gray-900 break-words">
                 Welcome back, {session.user?.name}
               </h2>
               <p className="mt-1 text-sm text-gray-500">
                 Here's what's happening with your projects today.
               </p>
             </div>
-            <div className="mt-4 flex md:mt-0 md:ml-4">
+            <div className="flex-shrink-0">
               <Link
                 href="/projects/new"
-                className="ml-3 inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 w-full md:w-auto min-h-[44px]"
+                style={{ touchAction: 'manipulation' }}
               >
                 Create Project
               </Link>
@@ -170,23 +186,46 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-red-800">{error}</p>
+              <button
+                onClick={() => {
+                  setError(null);
+                  fetchDashboardStats();
+                }}
+                className="text-sm text-red-600 hover:text-red-800 font-medium min-h-[44px] px-2"
+                style={{ touchAction: 'manipulation' }}
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className={`grid gap-4 md:gap-6 ${isMobile ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'}`}>
           {/* Stats Cards */}
           <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
+            <div className="p-4 md:p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-5 w-5 md:h-6 md:w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                   </svg>
                 </div>
-                <div className="ml-5 w-0 flex-1">
+                <div className="ml-3 md:ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      Total Projects
+                    <dt className="text-xs md:text-sm font-medium text-gray-500 truncate">
+                      {isMobile ? 'Projects' : 'Total Projects'}
                     </dt>
-                    <dd className="text-lg font-medium text-gray-900">
-                      {loading ? '...' : stats.totalProjects}
+                    <dd className="text-base md:text-lg font-medium text-gray-900">
+                      {loading ? (
+                        <div className="animate-pulse bg-gray-200 h-4 w-8 rounded"></div>
+                      ) : (
+                        stats.totalProjects
+                      )}
                     </dd>
                   </dl>
                 </div>
@@ -195,20 +234,24 @@ export default function Dashboard() {
           </div>
 
           <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
+            <div className="p-4 md:p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-5 w-5 md:h-6 md:w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                   </svg>
                 </div>
-                <div className="ml-5 w-0 flex-1">
+                <div className="ml-3 md:ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      Active Tasks
+                    <dt className="text-xs md:text-sm font-medium text-gray-500 truncate">
+                      {isMobile ? 'Tasks' : 'Active Tasks'}
                     </dt>
-                    <dd className="text-lg font-medium text-gray-900">
-                      {loading ? '...' : stats.activeTasks}
+                    <dd className="text-base md:text-lg font-medium text-gray-900">
+                      {loading ? (
+                        <div className="animate-pulse bg-gray-200 h-4 w-8 rounded"></div>
+                      ) : (
+                        stats.activeTasks
+                      )}
                     </dd>
                   </dl>
                 </div>
@@ -217,20 +260,24 @@ export default function Dashboard() {
           </div>
 
           <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
+            <div className="p-4 md:p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-5 w-5 md:h-6 md:w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <div className="ml-5 w-0 flex-1">
+                <div className="ml-3 md:ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      Upcoming Deadlines
+                    <dt className="text-xs md:text-sm font-medium text-gray-500 truncate">
+                      {isMobile ? 'Deadlines' : 'Upcoming Deadlines'}
                     </dt>
-                    <dd className="text-lg font-medium text-gray-900">
-                      {loading ? '...' : stats.upcomingDeadlines}
+                    <dd className="text-base md:text-lg font-medium text-gray-900">
+                      {loading ? (
+                        <div className="animate-pulse bg-gray-200 h-4 w-8 rounded"></div>
+                      ) : (
+                        stats.upcomingDeadlines
+                      )}
                     </dd>
                   </dl>
                 </div>
@@ -239,20 +286,24 @@ export default function Dashboard() {
           </div>
 
           <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
+            <div className="p-4 md:p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-5 w-5 md:h-6 md:w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                 </div>
-                <div className="ml-5 w-0 flex-1">
+                <div className="ml-3 md:ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      Team Members
+                    <dt className="text-xs md:text-sm font-medium text-gray-500 truncate">
+                      {isMobile ? 'Team' : 'Team Members'}
                     </dt>
-                    <dd className="text-lg font-medium text-gray-900">
-                      {loading ? '...' : stats.teamMembers}
+                    <dd className="text-base md:text-lg font-medium text-gray-900">
+                      {loading ? (
+                        <div className="animate-pulse bg-gray-200 h-4 w-8 rounded"></div>
+                      ) : (
+                        stats.teamMembers
+                      )}
                     </dd>
                   </dl>
                 </div>
@@ -261,7 +312,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className={`mt-6 md:mt-8 grid gap-4 md:gap-6 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-3'}`}>
           {/* Recent Projects */}
           <div className="bg-white shadow rounded-lg">
             <div className="px-4 py-5 sm:p-6">

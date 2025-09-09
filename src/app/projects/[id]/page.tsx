@@ -50,6 +50,19 @@ export default function ProjectDetails() {
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window || navigator.maxTouchPoints > 0);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -66,16 +79,20 @@ export default function ProjectDetails() {
 
   const fetchProject = async () => {
     try {
+      setError(null);
       const response = await fetch(`/api/projects/${params.id}`);
       if (response.ok) {
         const data = await response.json();
         setProject(data);
       } else {
-        console.error('Failed to fetch project:', response.status);
+        const errorText = await response.text();
+        console.error('Failed to fetch project:', response.status, errorText);
+        setError(`Failed to load project: ${response.status}`);
         setProject(null);
       }
     } catch (error) {
       console.error('Error fetching project:', error);
+      setError('Network error: Unable to load project');
       setProject(null);
     }
   };
@@ -144,16 +161,34 @@ export default function ProjectDetails() {
 
   if (!project) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Project Not Found</h1>
-          <p className="text-gray-600 mb-4">The project you're looking for doesn't exist or you don't have access to it.</p>
-          <Link
-            href="/projects"
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-          >
-            Back to Projects
-          </Link>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="text-center max-w-md mx-auto">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">
+            {error ? 'Error Loading Project' : 'Project Not Found'}
+          </h1>
+          <p className="text-gray-600 mb-4 text-sm md:text-base">
+            {error || "The project you're looking for doesn't exist or you don't have access to it."}
+          </p>
+          <div className="space-y-2">
+            <Link
+              href="/projects"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 w-full justify-center md:w-auto"
+            >
+              Back to Projects
+            </Link>
+            {error && (
+              <button
+                onClick={() => {
+                  setError(null);
+                  fetchProject();
+                  fetchTasks();
+                }}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 w-full justify-center md:w-auto md:ml-2"
+              >
+                Try Again
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -161,68 +196,68 @@ export default function ProjectDetails() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Project Header */}
-        <div className="bg-white shadow rounded-lg p-6 mb-6">
-          <div className="md:flex md:items-center md:justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8">
+        {/* Mobile-friendly Project Header */}
+        <div className="bg-white shadow rounded-lg p-4 md:p-6 mb-4 md:mb-6">
+          <div className="space-y-4 md:space-y-0 md:flex md:items-center md:justify-between">
             <div className="min-w-0 flex-1">
-              <h1 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+              <h1 className="text-xl md:text-2xl lg:text-3xl font-bold leading-7 text-gray-900 break-words">
                 {project.name}
               </h1>
-              <p className="mt-1 text-sm text-gray-500">{project.description}</p>
-              <div className="mt-2 flex items-center space-x-4">
+              <p className="mt-1 text-sm text-gray-500 break-words">{project.description}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2 md:gap-4">
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}>
                   {project.status?.replace('_', ' ') || 'Unknown'}
                 </span>
-                <span className="text-sm text-gray-500">
+                <span className="text-xs md:text-sm text-gray-500 break-all">
                   Client: {project.clientId?.name || 'Unknown'}
                 </span>
-                <span className="text-sm text-gray-500">
+                <span className="text-xs md:text-sm text-gray-500 break-all">
                   Manager: {project.projectManagerId?.name || 'Unknown'}
                 </span>
               </div>
             </div>
-            <div className="mt-4 flex md:mt-0 md:ml-4">
+            <div className="flex-shrink-0">
               <Link
                 href={`/projects/${project._id}/tasks/new`}
-                className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
+                className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 w-full md:w-auto"
               >
                 Add Task
               </Link>
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
+          <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
             <div>
-              <dt className="text-sm font-medium text-gray-500">Start Date</dt>
-              <dd className="mt-1 text-sm text-gray-900">
+              <dt className="text-xs md:text-sm font-medium text-gray-500">Start Date</dt>
+              <dd className="mt-1 text-xs md:text-sm text-gray-900">
                 {project.startDate ? new Date(project.startDate).toLocaleDateString() : 'Not set'}
               </dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">End Date</dt>
-              <dd className="mt-1 text-sm text-gray-900">
+              <dt className="text-xs md:text-sm font-medium text-gray-500">End Date</dt>
+              <dd className="mt-1 text-xs md:text-sm text-gray-900">
                 {project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Not set'}
               </dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Budget</dt>
-              <dd className="mt-1 text-sm text-gray-900">
+              <dt className="text-xs md:text-sm font-medium text-gray-500">Budget</dt>
+              <dd className="mt-1 text-xs md:text-sm text-gray-900">
                 ${project.budget ? project.budget.toLocaleString() : '0'}
               </dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Progress</dt>
-              <dd className="mt-1 text-sm text-gray-900">{project.progress || 0}%</dd>
+              <dt className="text-xs md:text-sm font-medium text-gray-500">Progress</dt>
+              <dd className="mt-1 text-xs md:text-sm text-gray-900">{project.progress || 0}%</dd>
             </div>
           </div>
         </div>
 
-        {/* Kanban Board */}
-        <div className="bg-white shadow rounded-lg p-6">
+        {/* Mobile-optimized Kanban Board */}
+        <div className="bg-white shadow rounded-lg p-4 md:p-6 mb-4 md:mb-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Tasks</h2>
 
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+          <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'}`}>
             {/* To Do */}
             <div className="bg-gray-50 rounded-lg p-4">
               <h3 className="text-sm font-medium text-gray-900 mb-3">To Do</h3>

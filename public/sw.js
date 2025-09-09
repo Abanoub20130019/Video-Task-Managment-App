@@ -1,6 +1,6 @@
-const CACHE_NAME = 'video-task-manager-v2';
-const STATIC_CACHE_NAME = 'video-task-manager-static-v2';
-const DYNAMIC_CACHE_NAME = 'video-task-manager-dynamic-v2';
+const CACHE_NAME = 'video-task-manager-v3';
+const STATIC_CACHE_NAME = 'video-task-manager-static-v3';
+const DYNAMIC_CACHE_NAME = 'video-task-manager-dynamic-v3';
 
 // Enhanced assets to cache for better offline functionality
 const STATIC_ASSETS = [
@@ -34,7 +34,7 @@ const OFFLINE_CAPABLE_ROUTES = [
 
 // Install event - cache minimal static assets
 self.addEventListener('install', (event) => {
-  console.log('Service Worker: Installing for online-first mode...');
+  console.log('Service Worker: Installing for mobile-optimized mode...');
   
   event.waitUntil(
     caches.open(STATIC_CACHE_NAME)
@@ -43,11 +43,13 @@ self.addEventListener('install', (event) => {
         return cache.addAll(STATIC_ASSETS);
       })
       .then(() => {
-        console.log('Service Worker: Ready for online-first operation');
+        console.log('Service Worker: Ready for mobile-optimized operation');
         return self.skipWaiting();
       })
       .catch((error) => {
         console.error('Service Worker: Error caching static assets', error);
+        // Don't fail installation if caching fails on mobile
+        return Promise.resolve();
       })
   );
 });
@@ -75,7 +77,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - implement online-first caching strategies
+// Fetch event - implement mobile-optimized caching strategies
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -90,16 +92,21 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle different types of requests with online-first approach
+  // Mobile-specific optimizations
+  const isMobileRequest = request.headers.get('user-agent')?.includes('Mobile') ||
+                         request.headers.get('user-agent')?.includes('Android') ||
+                         request.headers.get('user-agent')?.includes('iPhone');
+
+  // Handle different types of requests with mobile-optimized approach
   if (url.pathname.startsWith('/api/')) {
-    // API requests - Always try network first, minimal caching
-    event.respondWith(onlineFirstApiStrategy(request));
+    // API requests - Mobile-optimized with better error handling
+    event.respondWith(mobileOptimizedApiStrategy(request, isMobileRequest));
   } else if (STATIC_ASSETS.some(asset => url.pathname === asset)) {
     // Static assets - Cache first for performance
     event.respondWith(cacheFirstStrategy(request));
   } else {
-    // Pages and other resources - Network first for fresh content
-    event.respondWith(networkFirstStrategy(request));
+    // Pages and other resources - Mobile-optimized network strategy
+    event.respondWith(mobileOptimizedNetworkStrategy(request, isMobileRequest));
   }
 });
 
@@ -126,27 +133,44 @@ async function cacheFirstStrategy(request) {
   }
 }
 
-// Enhanced API Strategy with offline support
-async function onlineFirstApiStrategy(request) {
+// Mobile-optimized API Strategy with better error handling
+async function mobileOptimizedApiStrategy(request, isMobile) {
   const url = new URL(request.url);
   
   try {
-    const networkResponse = await fetch(request);
+    // Add timeout for mobile requests to prevent hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), isMobile ? 10000 : 30000);
+    
+    const networkResponse = await fetch(request, {
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
     
     if (networkResponse.ok && CACHEABLE_API_ROUTES.some(route => request.url.includes(route))) {
       // Cache successful GET responses for read operations
-      const cache = await caches.open(DYNAMIC_CACHE_NAME);
-      cache.put(request, networkResponse.clone());
-      
-      // Store data in IndexedDB for offline access
-      if (request.method === 'GET') {
-        storeOfflineData(url.pathname, await networkResponse.clone().json());
+      try {
+        const cache = await caches.open(DYNAMIC_CACHE_NAME);
+        cache.put(request, networkResponse.clone());
+        
+        // Store data in IndexedDB for offline access (with error handling)
+        if (request.method === 'GET') {
+          try {
+            const data = await networkResponse.clone().json();
+            await storeOfflineData(url.pathname, data);
+          } catch (jsonError) {
+            console.warn('Failed to parse JSON for offline storage:', jsonError);
+          }
+        }
+      } catch (cacheError) {
+        console.warn('Failed to cache response:', cacheError);
       }
     }
     
     return networkResponse;
   } catch (error) {
-    console.log('Network unavailable, checking offline capabilities:', error);
+    console.log('Network unavailable or timeout, checking offline capabilities:', error);
     
     // Handle offline POST/PUT requests for task creation
     if (request.method !== 'GET' && OFFLINE_CAPABLE_ROUTES.some(route => request.url.includes(route))) {
@@ -164,21 +188,25 @@ async function onlineFirstApiStrategy(request) {
       }
       
       // Try to get data from IndexedDB
-      const offlineData = await getOfflineData(url.pathname);
-      if (offlineData) {
-        return new Response(JSON.stringify(offlineData), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Served-From': 'offline-storage',
-            'X-Cache-Warning': 'Offline data - may be stale'
-          }
-        });
+      try {
+        const offlineData = await getOfflineData(url.pathname);
+        if (offlineData) {
+          return new Response(JSON.stringify(offlineData), {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Served-From': 'offline-storage',
+              'X-Cache-Warning': 'Offline data - may be stale'
+            }
+          });
+        }
+      } catch (dbError) {
+        console.warn('Failed to retrieve offline data:', dbError);
       }
     }
 
     // Return appropriate offline response
-    return getOfflineResponse(request);
+    return getMobileOfflineResponse(request, isMobile);
   }
 }
 
@@ -223,41 +251,69 @@ async function handleOfflineWrite(request) {
   }
 }
 
-// Get appropriate offline response
-function getOfflineResponse(request) {
+// Get mobile-appropriate offline response
+function getMobileOfflineResponse(request, isMobile) {
   const url = new URL(request.url);
+  
+  const mobileMessage = isMobile ?
+    'Limited connectivity detected. Some features may not be available.' :
+    'Network unavailable. Please check your internet connection.';
   
   if (url.pathname.includes('/projects')) {
     return new Response(JSON.stringify({
       projects: [],
-      message: 'Offline mode - limited data available',
-      offline: true
+      pagination: { totalItems: 0, currentPage: 1, totalPages: 0 },
+      message: mobileMessage,
+      offline: true,
+      mobile: isMobile
     }), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' }
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Offline-Mode': 'true',
+        'X-Mobile-Optimized': isMobile ? 'true' : 'false'
+      }
     });
   }
   
   if (url.pathname.includes('/tasks')) {
     return new Response(JSON.stringify({
       tasks: [],
-      message: 'Offline mode - limited data available',
-      offline: true
+      message: mobileMessage,
+      offline: true,
+      mobile: isMobile
     }), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' }
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Offline-Mode': 'true',
+        'X-Mobile-Optimized': isMobile ? 'true' : 'false'
+      }
     });
   }
   
   return new Response(JSON.stringify({
     error: 'Network unavailable',
-    message: 'Please check your internet connection',
+    message: mobileMessage,
     offline: true,
-    timestamp: new Date().toISOString()
+    mobile: isMobile,
+    timestamp: new Date().toISOString(),
+    suggestions: isMobile ? [
+      'Check your mobile data connection',
+      'Try switching between WiFi and mobile data',
+      'Move to an area with better signal'
+    ] : [
+      'Check your internet connection',
+      'Try refreshing the page'
+    ]
   }), {
     status: 503,
     statusText: 'Service Unavailable',
-    headers: { 'Content-Type': 'application/json' }
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Offline-Mode': 'true',
+      'X-Mobile-Optimized': isMobile ? 'true' : 'false'
+    }
   });
 }
 
@@ -336,15 +392,38 @@ async function storeOfflineAction(action) {
   });
 }
 
-// Network First Strategy - for pages and resources
-async function networkFirstStrategy(request) {
+// Mobile-optimized Network Strategy - for pages and resources
+async function mobileOptimizedNetworkStrategy(request, isMobile) {
   try {
-    const networkResponse = await fetch(request);
+    // Add timeout for mobile requests
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), isMobile ? 8000 : 15000);
+    
+    const networkResponse = await fetch(request, {
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
     
     if (networkResponse.ok) {
-      // Cache successful responses
-      const cache = await caches.open(DYNAMIC_CACHE_NAME);
-      cache.put(request, networkResponse.clone());
+      // Cache successful responses (with size limits for mobile)
+      try {
+        const cache = await caches.open(DYNAMIC_CACHE_NAME);
+        
+        // Limit cache size on mobile devices
+        if (isMobile) {
+          const cacheKeys = await cache.keys();
+          if (cacheKeys.length > 50) {
+            // Remove oldest entries
+            const oldestKey = cacheKeys[0];
+            await cache.delete(oldestKey);
+          }
+        }
+        
+        cache.put(request, networkResponse.clone());
+      } catch (cacheError) {
+        console.warn('Failed to cache response:', cacheError);
+      }
     }
     
     return networkResponse;
@@ -356,34 +435,81 @@ async function networkFirstStrategy(request) {
       return cachedResponse;
     }
 
-    // Return basic offline page
-    return new Response(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Offline - Video Task Manager</title>
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <style>
-            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-            .offline-message { max-width: 400px; margin: 0 auto; }
-          </style>
-        </head>
-        <body>
-          <div class="offline-message">
-            <h1>You're Offline</h1>
-            <p>Please check your internet connection and try again.</p>
-            <button onclick="window.location.reload()">Retry</button>
-          </div>
-        </body>
-      </html>
-    `, {
-      status: 503,
-      statusText: 'Service Unavailable',
-      headers: {
-        'Content-Type': 'text/html'
-      }
-    });
+    // Return mobile-optimized offline page
+    return getMobileOfflinePage(isMobile);
   }
+}
+
+// Mobile-optimized offline page
+function getMobileOfflinePage(isMobile) {
+  const mobileStyles = isMobile ? `
+    body { font-size: 16px; padding: 20px; }
+    .offline-message { max-width: 100%; }
+    button {
+      min-height: 44px;
+      min-width: 44px;
+      padding: 12px 24px;
+      font-size: 16px;
+      touch-action: manipulation;
+    }
+  ` : '';
+
+  return new Response(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Offline - Video Task Manager</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+        <meta name="theme-color" content="#6366f1">
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            text-align: center;
+            padding: 50px 20px;
+            background: #f9fafb;
+            color: #374151;
+            margin: 0;
+          }
+          .offline-message {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          }
+          h1 { color: #1f2937; margin-bottom: 1rem; }
+          button {
+            background: #6366f1;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 16px;
+            cursor: pointer;
+            margin-top: 1rem;
+          }
+          button:hover { background: #5856eb; }
+          .icon { font-size: 3rem; margin-bottom: 1rem; }
+          ${mobileStyles}
+        </style>
+      </head>
+      <body>
+        <div class="offline-message">
+          <div class="icon">📱</div>
+          <h1>You're Offline</h1>
+          <p>Please check your internet connection and try again.</p>
+          ${isMobile ? '<p><small>Tip: Try switching to a different network or enable mobile data.</small></p>' : ''}
+          <button onclick="window.location.reload()">Retry</button>
+        </div>
+      </body>
+    </html>
+  `, {
+    status: 503,
+    statusText: 'Service Unavailable',
+    headers: {
+      'Content-Type': 'text/html'
+    }
+  });
 }
 
 // Stale While Revalidate Strategy - for pages
@@ -513,4 +639,4 @@ self.addEventListener('message', (event) => {
   }
 });
 
-console.log('Service Worker: Loaded for online-first operation');
+console.log('Service Worker: Loaded for mobile-optimized operation');

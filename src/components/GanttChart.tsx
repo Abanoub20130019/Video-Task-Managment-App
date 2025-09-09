@@ -23,103 +23,169 @@ interface GanttChartProps {
 
 export default function GanttChart({ tasks, projectStartDate, projectEndDate }: GanttChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [showTable, setShowTable] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [canvasError, setCanvasError] = useState(false);
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768 || 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      setIsMobile(mobile);
+      // Default to table view on mobile for better performance
+      if (mobile && !showTable) {
+        setShowTable(true);
+      }
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, [showTable]);
 
   useEffect(() => {
-    if (!canvasRef.current || tasks.length === 0 || !projectStartDate || !projectEndDate) return;
+    if (!canvasRef.current || tasks.length === 0 || !projectStartDate || !projectEndDate || showTable) return;
 
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Set canvas size
-    canvas.width = 800;
-    canvas.height = Math.max(400, tasks.length * 40 + 100);
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Calculate date range
-    const startDate = new Date(projectStartDate);
-    const endDate = new Date(projectEndDate);
-    const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-
-    // Draw header
-    ctx.fillStyle = '#374151';
-    ctx.fillRect(0, 0, canvas.width, 60);
-
-    // Draw task rows
-    tasks.forEach((task, index) => {
-      const y = 80 + index * 40;
-
-      // Draw task bar background
-      ctx.fillStyle = '#F3F4F6';
-      ctx.fillRect(0, y - 15, canvas.width, 30);
-
-      // Calculate task position and width
-      const taskEnd = new Date(task.dueDate);
-      // Use actual startDate if available, otherwise use project start date, or fallback to 3 days before due date
-      const taskStart = task.startDate
-        ? new Date(task.startDate)
-        : new Date(Math.max(
-            new Date(projectStartDate).getTime(),
-            taskEnd.getTime() - (3 * 24 * 60 * 60 * 1000)
-          )); // Use project start date or 3 days before due date, whichever is later
-
-      const taskStartOffset = Math.ceil((taskStart.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-      const taskDuration = Math.max(Math.ceil((taskEnd.getTime() - taskStart.getTime()) / (1000 * 60 * 60 * 24)), 1);
-
-      const barX = (taskStartOffset / totalDays) * (canvas.width - 200) + 200;
-      const barWidth = Math.max((taskDuration / totalDays) * (canvas.width - 200), 20);
-
-      // Draw task bar
-      let barColor = '#3B82F6'; // Default blue
-      switch (task.status) {
-        case 'completed':
-          barColor = '#10B981'; // Green
-          break;
-        case 'in_progress':
-          barColor = '#F59E0B'; // Yellow
-          break;
-        case 'review':
-          barColor = '#8B5CF6'; // Purple
-          break;
+    try {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        setCanvasError(true);
+        return;
       }
 
-      ctx.fillStyle = barColor;
-      ctx.fillRect(barX, y - 10, barWidth, 20);
+      // Get container width for responsive canvas
+      const containerWidth = containerRef.current?.clientWidth || 800;
+      const maxWidth = Math.min(containerWidth - 40, isMobile ? 600 : 1200);
+      const canvasWidth = Math.max(400, maxWidth);
+      const canvasHeight = Math.max(300, Math.min(tasks.length * 40 + 100, isMobile ? 400 : 600));
 
-      // Draw task text
-      ctx.fillStyle = '#111827';
-      ctx.font = '12px Arial';
-      ctx.fillText(task.title.substring(0, 20), 10, y + 5);
+      // Set canvas size with device pixel ratio for crisp rendering
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = canvasWidth * dpr;
+      canvas.height = canvasHeight * dpr;
+      canvas.style.width = `${canvasWidth}px`;
+      canvas.style.height = `${canvasHeight}px`;
+      ctx.scale(dpr, dpr);
 
-      // Draw assignee
-      ctx.fillStyle = '#6B7280';
-      ctx.font = '10px Arial';
-      ctx.fillText(task.assignedTo?.name || 'Unassigned', barX + 5, y + 3);
-    });
+      // Set canvas size for calculations
+      const displayWidth = canvasWidth;
+      const displayHeight = canvasHeight;
 
-    // Draw timeline
-    ctx.strokeStyle = '#D1D5DB';
-    ctx.lineWidth = 1;
+      // Clear canvas
+      ctx.clearRect(0, 0, displayWidth, displayHeight);
 
-    for (let i = 0; i <= totalDays; i += 7) {
-      const x = (i / totalDays) * (canvas.width - 200) + 200;
-      ctx.beginPath();
-      ctx.moveTo(x, 60);
-      ctx.lineTo(x, canvas.height);
-      ctx.stroke();
+      // Calculate date range
+      const startDate = new Date(projectStartDate);
+      const endDate = new Date(projectEndDate);
+      const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
 
-      // Draw date labels
-      const date = new Date(startDate);
-      date.setDate(date.getDate() + i);
-      ctx.fillStyle = '#6B7280';
-      ctx.font = '10px Arial';
-      ctx.fillText(date.toLocaleDateString(), x + 5, 75);
+      if (totalDays <= 0) {
+        setCanvasError(true);
+        return;
+      }
+
+      // Draw header
+      ctx.fillStyle = '#374151';
+      ctx.fillRect(0, 0, displayWidth, 60);
+
+      // Draw task rows with mobile optimization
+      const maxTasks = isMobile ? Math.min(tasks.length, 10) : tasks.length;
+      const taskHeight = isMobile ? 35 : 40;
+      
+      tasks.slice(0, maxTasks).forEach((task, index) => {
+        const y = 80 + index * taskHeight;
+
+        // Draw task bar background
+        ctx.fillStyle = '#F3F4F6';
+        ctx.fillRect(0, y - 15, displayWidth, 30);
+
+        // Calculate task position and width
+        const taskEnd = new Date(task.dueDate);
+        const taskStart = task.startDate
+          ? new Date(task.startDate)
+          : new Date(Math.max(
+              new Date(projectStartDate).getTime(),
+              taskEnd.getTime() - (3 * 24 * 60 * 60 * 1000)
+            ));
+
+        const taskStartOffset = Math.ceil((taskStart.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        const taskDuration = Math.max(Math.ceil((taskEnd.getTime() - taskStart.getTime()) / (1000 * 60 * 60 * 1000)), 1);
+
+        const labelWidth = isMobile ? 150 : 200;
+        const barX = Math.max(labelWidth, (taskStartOffset / totalDays) * (displayWidth - labelWidth) + labelWidth);
+        const barWidth = Math.max((taskDuration / totalDays) * (displayWidth - labelWidth), 10);
+
+        // Draw task bar
+        let barColor = '#3B82F6';
+        switch (task.status) {
+          case 'completed':
+            barColor = '#10B981';
+            break;
+          case 'in_progress':
+            barColor = '#F59E0B';
+            break;
+          case 'review':
+            barColor = '#8B5CF6';
+            break;
+        }
+
+        ctx.fillStyle = barColor;
+        ctx.fillRect(barX, y - 10, barWidth, 20);
+
+        // Draw task text with mobile optimization
+        ctx.fillStyle = '#111827';
+        ctx.font = isMobile ? '10px Arial' : '12px Arial';
+        const taskTitle = isMobile ? task.title.substring(0, 15) : task.title.substring(0, 20);
+        ctx.fillText(taskTitle, 10, y + 5);
+
+        // Draw assignee (skip on very small screens)
+        if (!isMobile || displayWidth > 500) {
+          ctx.fillStyle = '#6B7280';
+          ctx.font = isMobile ? '8px Arial' : '10px Arial';
+          const assigneeName = task.assignedTo?.name || 'Unassigned';
+          const maxAssigneeLength = isMobile ? 8 : 12;
+          ctx.fillText(assigneeName.substring(0, maxAssigneeLength), barX + 5, y + 3);
+        }
+      });
+
+      // Draw timeline with mobile optimization
+      ctx.strokeStyle = '#D1D5DB';
+      ctx.lineWidth = 1;
+
+      const timelineStep = isMobile ? Math.max(7, Math.ceil(totalDays / 5)) : 7;
+      for (let i = 0; i <= totalDays; i += timelineStep) {
+        const labelWidth = isMobile ? 150 : 200;
+        const x = (i / totalDays) * (displayWidth - labelWidth) + labelWidth;
+        ctx.beginPath();
+        ctx.moveTo(x, 60);
+        ctx.lineTo(x, displayHeight);
+        ctx.stroke();
+
+        // Draw date labels
+        const date = new Date(startDate);
+        date.setDate(date.getDate() + i);
+        ctx.fillStyle = '#6B7280';
+        ctx.font = isMobile ? '8px Arial' : '10px Arial';
+        const dateStr = isMobile ?
+          `${date.getMonth() + 1}/${date.getDate()}` :
+          date.toLocaleDateString();
+        ctx.fillText(dateStr, x + 2, 75);
+      }
+
+      // Show truncation message for mobile
+      if (isMobile && tasks.length > maxTasks) {
+        ctx.fillStyle = '#6B7280';
+        ctx.font = '10px Arial';
+        ctx.fillText(`... and ${tasks.length - maxTasks} more tasks`, 10, displayHeight - 20);
+      }
+
+    } catch (error) {
+      console.error('Canvas rendering error:', error);
+      setCanvasError(true);
     }
-
-  }, [tasks, projectStartDate, projectEndDate]);
+  }, [tasks, projectStartDate, projectEndDate, showTable, isMobile]);
 
   // Accessible table fallback component
   const GanttTable = () => (
@@ -233,15 +299,28 @@ export default function GanttChart({ tasks, projectStartDate, projectEndDate }: 
         </button>
       </div>
 
-      {showTable ? (
-        <GanttTable />
+      {showTable || canvasError ? (
+        <div>
+          {canvasError && (
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+              <p className="text-sm text-yellow-800">
+                Chart view is not available. Showing table view instead.
+              </p>
+            </div>
+          )}
+          <GanttTable />
+        </div>
       ) : (
         <>
-          <div className="overflow-x-auto">
+          <div ref={containerRef} className="overflow-x-auto">
             <canvas
               ref={canvasRef}
-              className="border border-gray-200 rounded"
-              style={{ maxWidth: '100%', height: 'auto' }}
+              className="border border-gray-200 rounded max-w-full"
+              style={{
+                maxWidth: '100%',
+                height: 'auto',
+                touchAction: 'pan-x pan-y' // Enable touch scrolling
+              }}
               role="img"
               aria-label={`Gantt chart showing ${tasks.length} tasks from ${new Date(projectStartDate).toLocaleDateString()} to ${new Date(projectEndDate).toLocaleDateString()}`}
             />

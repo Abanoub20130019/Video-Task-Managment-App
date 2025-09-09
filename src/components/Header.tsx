@@ -126,8 +126,9 @@ export default function Header() {
             <div className="lg:hidden">
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="relative p-2 text-gray-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
+                className="relative p-3 text-gray-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 min-h-[44px] min-w-[44px] flex items-center justify-center"
                 aria-label="Toggle mobile menu"
+                style={{ touchAction: 'manipulation' }}
               >
                 <div className="w-6 h-6 relative">
                   <span className={`absolute block w-5 h-0.5 bg-current transform transition-all duration-300 ${
@@ -148,19 +149,20 @@ export default function Header() {
         {/* Enhanced Mobile Navigation */}
         {isMenuOpen && (
           <div className="lg:hidden border-t border-gray-100 dark:border-slate-700 bg-gradient-to-b from-white/95 to-gray-50/95 dark:from-slate-900/95 dark:to-slate-800/95 shadow-lg backdrop-blur-md">
-            <div className="px-4 pt-4 pb-6 space-y-2">
+            <div className="px-4 pt-4 pb-6 space-y-2 max-h-[70vh] overflow-y-auto">
               {navigation.map((item) => {
                 const isActive = isActiveLink(item.href);
                 return (
                   <Link
                     key={item.name}
                     href={item.href}
-                    className={`flex items-center space-x-3 px-4 py-3 text-base font-medium rounded-xl transition-all duration-300 ${
+                    className={`flex items-center space-x-3 px-4 py-4 text-base font-medium rounded-xl transition-all duration-300 min-h-[44px] ${
                       isActive
                         ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 shadow-sm border border-indigo-100 dark:border-indigo-800'
-                        : 'text-gray-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-gray-50 dark:hover:bg-slate-800'
+                        : 'text-gray-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-gray-50 dark:hover:bg-slate-800 active:bg-gray-100 dark:active:bg-slate-700'
                     }`}
                     onClick={() => setIsMenuOpen(false)}
+                    style={{ touchAction: 'manipulation' }}
                   >
                     <span className="text-lg">{item.icon}</span>
                     <span>{item.name}</span>
@@ -199,7 +201,8 @@ export default function Header() {
               {/* Mobile Sign Out Button */}
               <button
                 onClick={() => signOut()}
-                className="mt-4 w-full flex items-center justify-center px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:text-white hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 border border-red-200 dark:border-red-800 hover:border-transparent rounded-lg transition-all duration-300 shadow-sm hover:shadow-md"
+                className="mt-4 w-full flex items-center justify-center px-4 py-3 text-sm font-medium text-red-600 dark:text-red-400 hover:text-white hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 border border-red-200 dark:border-red-800 hover:border-transparent rounded-lg transition-all duration-300 shadow-sm hover:shadow-md active:bg-red-600 active:text-white min-h-[44px]"
+                style={{ touchAction: 'manipulation' }}
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

@@ -112,11 +112,24 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning={true}
+        style={{
+          touchAction: 'manipulation', // Prevent double-tap zoom
+          WebkitTouchCallout: 'none', // Disable iOS callout
+          WebkitUserSelect: 'none', // Disable text selection on iOS
+          userSelect: 'none' // Disable text selection
+        }}
       >
         <Providers>
           <ErrorBoundary>
             <Header />
-            <main className="min-h-screen" suppressHydrationWarning={true}>
+            <main
+              className="min-h-screen"
+              suppressHydrationWarning={true}
+              style={{
+                touchAction: 'pan-x pan-y', // Allow scrolling but prevent zoom
+                overscrollBehavior: 'contain' // Prevent overscroll bounce
+              }}
+            >
               {children}
             </main>
             <PWAInstaller />
